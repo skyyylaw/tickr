@@ -1,6 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+const AUTH_ROUTES = ["/login", "/signup"];
+const PUBLIC_ROUTES = ["/", ...AUTH_ROUTES];
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -29,8 +32,25 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Refreshing the auth token
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const pathname = request.nextUrl.pathname;
+
+  // Redirect unauthenticated users to /login (unless on a public route)
+  if (!user && !PUBLIC_ROUTES.includes(pathname)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  // Redirect authenticated users away from auth pages to /feed
+  if (user && AUTH_ROUTES.includes(pathname)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/feed";
+    return NextResponse.redirect(url);
+  }
 
   return supabaseResponse;
 }

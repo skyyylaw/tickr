@@ -8,8 +8,9 @@ Tickr is a web app that captures a user's investment thesis (goals, risk profile
 
 - US stocks only (NYSE + NASDAQ). No international, forex, or crypto for MVP.
 - Trade ideas are TL;DR format — concise, scannable, max 15-20 seconds to read when expanded. Not research reports.
-- Every trade idea must cite its sources with clickable links (news articles, data). Sources come from Finnhub news and Tavily search results — the LLM only cites sources we actually retrieved, never fabricated URLs.
+- Every trade idea must cite its sources with clickable links (news articles, data) that open in a new browser tab. Sources come from Finnhub news and Tavily search results — the LLM only cites sources we actually retrieved, never fabricated URLs.
 - Ticker search uses Finnhub's /search endpoint with debounce, filtered to US exchanges only.
+- Logo is "tickr" in all lowercase, rendered in math italic serif font (Noto Serif italic or similar).
 
 ## Tech Stack
 
@@ -61,9 +62,8 @@ Tables: user_profiles, watchlist_items, trade_ideas, agent_runs, user_actions, p
 /onboarding   — Thesis capture wizard
 /components
 /ui           — Reusable primitives (Button, Card, Input, etc.)
-/feed         — Trade idea feed components
+/feed         — Trade idea feed components + earnings digest cards
 /digest       — Daily briefing components
-/reader       — Built-in article reader panel
 /onboarding   — Onboarding step components
 /watchlist    — Watchlist components
 /lib
@@ -73,6 +73,7 @@ Tables: user_profiles, watchlist_items, trade_ideas, agent_runs, user_actions, p
 /finnhub      — Finnhub API wrapper (uses cache)
 /tavily       — Tavily API wrapper (uses cache)
 /types          — TypeScript type definitions
+
 
 ## Agent Pipeline (Core Logic)
 
@@ -100,12 +101,10 @@ Tables: user_profiles, watchlist_items, trade_ideas, agent_runs, user_actions, p
 5. Save as card_type='earnings_digest' in trade_ideas table
 6. Triggered by cron and manual "Generate Ideas" button
 
-## Article Reader
+## Source Citations
 
-- When user clicks a source citation, open a slide-over reader panel
-- Fetch clean article content via Tavily extract endpoint
-- Display in-app with clean formatting
-- Fall back to external browser if extraction fails
+- When user clicks a source citation [1][2], it opens the original article URL in a new browser tab
+- Sources come from Finnhub news articles and Tavily search results — the LLM only cites sources we actually retrieved
 
 ## Testing
 
