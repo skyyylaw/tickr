@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const AUTH_ROUTES = ["/login", "/signup"];
 const PUBLIC_ROUTES = ["/", ...AUTH_ROUTES];
+const DASHBOARD_ROUTES = ["/feed", "/watchlist", "/profile", "/settings"];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -50,6 +51,33 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/feed";
     return NextResponse.redirect(url);
+  }
+
+  // Onboarding gate: check completion status for dashboard routes and /onboarding
+  if (user && (DASHBOARD_ROUTES.includes(pathname) || pathname === "/onboarding")) {
+    const { data: profile } = await supabase
+      .from("user_profiles")
+      .select("investment_goals")
+      .eq("id", user.id)
+      .single();
+
+    const hasCompletedOnboarding =
+      Array.isArray(profile?.investment_goals) &&
+      profile.investment_goals.length > 0;
+
+    // Incomplete onboarding → force to /onboarding
+    if (!hasCompletedOnboarding && pathname !== "/onboarding") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/onboarding";
+      return NextResponse.redirect(url);
+    }
+
+    // Already onboarded → skip /onboarding, go to feed
+    if (hasCompletedOnboarding && pathname === "/onboarding") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/feed";
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;

@@ -25,3 +25,36 @@ body {
     text-wrap: balance;
   }
 }
+
+/* Risk slider custom thumb styling */
+.risk-slider {
+  -webkit-appearance: none;
+  appearance: none;
+}
+.risk-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #1a1a1a;
+  cursor: pointer;
+  margin-top: -7px;
+}
+.risk-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #1a1a1a;
+  cursor: pointer;
+  border: none;
+}
+.risk-slider::-webkit-slider-runnable-track {
+  height: 2px;
+  border-radius: 1px;
+}
+.risk-slider::-moz-range-track {
+  height: 2px;
+  border-radius: 1px;
+  background: transparent;
+}
