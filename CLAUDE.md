@@ -74,7 +74,6 @@ Tables: user_profiles, watchlist_items, trade_ideas, agent_runs, user_actions, p
 /tavily       — Tavily API wrapper (uses cache)
 /types          — TypeScript type definitions
 
-
 ## Agent Pipeline (Core Logic)
 
 1. Event Detection: Poll Finnhub for news/events matching user's sectors & watchlist
@@ -118,3 +117,10 @@ Tables: user_profiles, watchlist_items, trade_ideas, agent_runs, user_actions, p
 - Always validate user input with zod before database operations
 - The agent should never give specific financial advice — frame everything as "ideas to research further"
 - Include disclaimers on trade ideas: "This is not financial advice"
+
+
+## Design Reference
+
+See /design/wireframes.jsx for visual mockups of all key screens.
+Match the exact colors, typography, spacing, and component styles defined there.
+Key design tokens are extracted from that file — do not deviate.
