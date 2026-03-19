@@ -1,0 +1,8 @@
+export const QUOTE_TTL = 120
+export const COMPANY_PROFILE_TTL = 86400
+export const NEWS_TTL = 900
+export const SEARCH_TTL = 3600
+export const SYMBOL_SEARCH_TTL = 86400
+export const EARNINGS_TRANSCRIPT_TTL = 86400
+export const ANALYST_DATA_TTL = 21600
+export const CANDLES_TTL = 3600
