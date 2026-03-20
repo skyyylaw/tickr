@@ -115,15 +115,25 @@ export async function enrichEventData(
 
   const quote = results[0].status === 'fulfilled' ? results[0].value : null
   const profile = results[1].status === 'fulfilled' ? results[1].value : null
-  const candles = results[2].status === 'fulfilled' ? results[2].value : null
   const tavilyResults = results[3].status === 'fulfilled' ? results[3].value : []
 
   if (results[0].status === 'rejected') console.error(`[agent] Quote fetch failed for ${ticker}:`, results[0].reason)
   if (results[1].status === 'rejected') console.error(`[agent] Profile fetch failed for ${ticker}:`, results[1].reason)
-  if (results[2].status === 'rejected') console.error(`[agent] Candles fetch failed for ${ticker}:`, results[2].reason)
   if (results[3].status === 'rejected') console.error(`[agent] Tavily search failed for ${ticker}:`, results[3].reason)
 
-  const metrics = computeTickerMetrics(candles, quote)
+  // Candles endpoint returns 403 on Finnhub free tier — skip metrics silently
+  let metrics: TickerMetrics | null = null
+  if (results[2].status === 'fulfilled') {
+    metrics = computeTickerMetrics(results[2].value, quote)
+  }
+  // Only log non-403 candle failures
+  if (results[2].status === 'rejected') {
+    const reason = results[2].reason
+    const is403 = reason?.status === 403 || reason?.message?.includes('403')
+    if (!is403) {
+      console.error(`[agent] Candles fetch failed for ${ticker}:`, reason)
+    }
+  }
   const sources = buildSources(event, tavilyResults)
 
   return {
