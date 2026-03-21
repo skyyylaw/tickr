@@ -1,5 +1,6 @@
-import type { EnrichedEvent, EnrichedEarningsData } from '@/types/Agent'
+import type { EnrichedEvent, EnrichedEarningsData, Source } from '@/types/Agent'
 import type { WizardData } from '@/types/Thesis'
+import type { NewsArticle } from '@/types/Finnhub'
 
 export const TRADE_IDEA_SYSTEM_PROMPT = `You are a concise AI investment research analyst for Tickr. Your job is to analyze market events through the lens of a specific investor's thesis and generate TL;DR trade ideas backed by cited sources.
 
@@ -210,6 +211,56 @@ export function buildEarningsDigestUserPrompt(
 
   if (data.sources.length > 0) {
     sections.push(`## Sources\n${formatSources(data.sources)}`)
+  }
+
+  return sections.join('\n\n')
+}
+
+export const DAILY_DIGEST_SYSTEM_PROMPT = `You are writing a personalized daily market briefing for a Tickr user. Your tone is conversational but knowledgeable — like a smart friend in finance catching them up over coffee.
+
+RULES:
+- Write in 2nd person ("Your tech watchlist had a busy day...")
+- Group related events into narrative threads, don't just list headlines
+- Connect events to the user's thesis where relevant
+- Keep the entire briefing to 300-400 words max
+- Use natural transitions between topics
+- End with a "Worth watching today" line about upcoming events (earnings, Fed meetings, etc.)
+- Cite sources using [1] [2] notation — only cite sources provided in context
+- US stocks only
+
+OUTPUT FORMAT (valid JSON only, no markdown):
+{
+  "greeting": "Short personalized opener (e.g., 'Big moves in energy today — here's what matters for you.')",
+  "sections": [
+    {
+      "label": "Short topic label (e.g., 'YOUR EV WATCHLIST')",
+      "body": "2-4 sentences of conversational narrative with [1] [2] source refs"
+    }
+  ],
+  "watch_today": "One line about what to keep an eye on next",
+  "sources": [
+    {"id": 1, "title": "Article title", "url": "https://...", "publisher": "Reuters"}
+  ]
+}`
+
+export function buildDailyDigestUserPrompt(
+  articles: NewsArticle[],
+  userProfile: WizardData,
+  sources: Source[]
+): string {
+  const sections: string[] = []
+
+  sections.push(`## Your Investor Profile\n${formatThesis(userProfile)}`)
+
+  if (articles.length > 0) {
+    const articleLines = articles
+      .slice(0, 20)
+      .map((a, i) => `[${i + 1}] ${a.headline}\n${a.summary.slice(0, 300)}`)
+    sections.push(`## Today's News Articles\n${articleLines.join('\n\n')}`)
+  }
+
+  if (sources.length > 0) {
+    sections.push(`## Sources\n${formatSources(sources)}`)
   }
 
   return sections.join('\n\n')
