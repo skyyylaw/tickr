@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { SignOutButton } from '@/components/SignOutButton'
 import { ChipSelect } from '@/components/onboarding/ChipSelect'
 import { CardSelect, type CardOption } from '@/components/onboarding/CardSelect'
 import { RiskSlider } from '@/components/onboarding/RiskSlider'
@@ -375,6 +376,7 @@ export function ProfileClient({ profile, email, stats, history }: ProfileClientP
             <Link href="/feed" className="text-tickr-muted text-xs no-underline">Feed</Link>
             <Link href="/watchlist" className="text-tickr-muted text-xs no-underline">Watchlist</Link>
             <span className="text-tickr-text text-xs font-semibold">Profile</span>
+            <SignOutButton />
           </div>
         </div>
       </div>

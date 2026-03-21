@@ -328,7 +328,7 @@ export function OnboardingWizard() {
       </div>
 
       {/* Progress bar */}
-      <div className="flex gap-1 mb-10 w-[360px]">
+      <div className="flex gap-1 mb-10 w-full max-w-[360px]">
         {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
           <div
             key={i}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { SignOutButton } from '@/components/SignOutButton'
 import type { WatchlistItemWithQuote, PositionRow } from '@/types/Watchlist'
 
 // Design tokens from wireframes
@@ -224,7 +225,7 @@ export function WatchlistClient({ initialItems }: WatchlistClientProps) {
           zIndex: 40,
           background: colors.surface,
           borderBottom: `1px solid ${colors.border}`,
-          padding: '0 32px',
+          padding: '0 16px',
         }}
       >
         <div
@@ -276,6 +277,7 @@ export function WatchlistClient({ initialItems }: WatchlistClientProps) {
             >
               Profile
             </Link>
+            <SignOutButton />
           </div>
         </div>
       </div>
@@ -422,7 +424,7 @@ export function WatchlistClient({ initialItems }: WatchlistClientProps) {
             }}
           >
             {/* Main Row */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
               <span
                 style={{
                   color: colors.text,
@@ -735,12 +737,13 @@ export function WatchlistClient({ initialItems }: WatchlistClientProps) {
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '12px',
+                        gap: '8px',
                         padding: '8px 12px',
                         background: colors.bg,
                         borderRadius: '8px',
                         marginBottom: '4px',
                         fontSize: '12px',
+                        flexWrap: 'wrap',
                       }}
                     >
                       <span style={{ color: colors.textSecondary, fontFamily: "'JetBrains Mono', monospace" }}>

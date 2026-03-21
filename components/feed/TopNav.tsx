@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { SignOutButton } from '@/components/SignOutButton'
 
 type Tab = 'for-you' | 'digest' | 'saved' | 'dismissed'
 
@@ -25,7 +26,7 @@ export function TopNav({ activeTab, onTabChange }: TopNavProps) {
         zIndex: 40,
         background: '#FFFFFF',
         borderBottom: '1px solid #E8E8E8',
-        padding: '0 32px',
+        padding: '0 16px',
       }}
     >
       {/* Top row: centered logo with right-anchored links */}
@@ -77,6 +78,7 @@ export function TopNav({ activeTab, onTabChange }: TopNavProps) {
           >
             Profile
           </Link>
+          <SignOutButton />
         </div>
       </div>
 
