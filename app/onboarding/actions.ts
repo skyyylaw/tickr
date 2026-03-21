@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import type { WizardData } from '@/types/Thesis'
+import { getSuggestedTickers } from '@/lib/data/tickerSuggestions'
 
 export async function saveThesis(data: WizardData): Promise<void> {
   const supabase = await createClient()
@@ -68,6 +69,17 @@ export async function saveThesis(data: WizardData): Promise<void> {
         changed_fields: changedFields,
         snapshot,
       })
+    }
+  }
+
+  // Auto-populate watchlist if user skipped ticker selection
+  if (data.interested_tickers.length === 0) {
+    const suggested = getSuggestedTickers(data.sectors, data.industries).slice(0, 5)
+    if (suggested.length > 0) {
+      await supabase.from('watchlist_items').insert(
+        suggested.map((ticker) => ({ user_id: user.id, ticker }))
+      )
+      redirect('/feed?seeded=1')
     }
   }
 

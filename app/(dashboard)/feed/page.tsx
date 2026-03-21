@@ -3,11 +3,18 @@ import { createClient } from '@/lib/supabase/server'
 import { FeedClient } from '@/components/feed/FeedClient'
 import type { TradeIdeaRow, DigestRow } from '@/types/Feed'
 
-export default async function FeedPage() {
+export default async function FeedPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ seeded?: string }>
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) redirect('/login')
+  if (!user) redirect('/')
+
+  const params = await searchParams
+  const watchlistSeeded = params.seeded === '1'
 
   const [ideasResult, digestResult] = await Promise.allSettled([
     supabase
@@ -32,5 +39,5 @@ export default async function FeedPage() {
   const initialDigest: DigestRow | null =
     digestResult.status === 'fulfilled' ? (digestResult.value.data ?? null) : null
 
-  return <FeedClient initialIdeas={initialIdeas} initialDigest={initialDigest} />
+  return <FeedClient initialIdeas={initialIdeas} initialDigest={initialDigest} watchlistSeeded={watchlistSeeded} />
 }

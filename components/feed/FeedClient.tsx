@@ -13,15 +13,17 @@ type Tab = 'for-you' | 'digest' | 'saved' | 'dismissed'
 interface FeedClientProps {
   initialIdeas: TradeIdeaRow[]
   initialDigest: DigestRow | null
+  watchlistSeeded?: boolean
 }
 
-export function FeedClient({ initialIdeas, initialDigest }: FeedClientProps) {
+export function FeedClient({ initialIdeas, initialDigest, watchlistSeeded }: FeedClientProps) {
   const [activeTab, setActiveTab] = useState<Tab>('for-you')
   const [ideas, setIdeas] = useState<TradeIdeaRow[]>(initialIdeas)
   const [tabIdeas, setTabIdeas] = useState<Partial<Record<Tab, TradeIdeaRow[]>>>({})
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
   const [loadingTab, setLoadingTab] = useState(false)
+  const [showSeededToast, setShowSeededToast] = useState(watchlistSeeded ?? false)
 
   // Viewport time tracking
   const entryTimes = useRef<Map<string, number>>(new Map())
@@ -217,9 +219,60 @@ export function FeedClient({ initialIdeas, initialDigest }: FeedClientProps) {
       ? ideas
       : tabIdeas[activeTab] ?? []
 
+  // Auto-dismiss seeded toast
+  useEffect(() => {
+    if (!showSeededToast) return
+    const timer = setTimeout(() => setShowSeededToast(false), 8000)
+    return () => clearTimeout(timer)
+  }, [showSeededToast])
+
   return (
     <div style={{ minHeight: '100vh', background: '#FAFAFA' }}>
       <TopNav activeTab={activeTab} onTabChange={handleTabChange} />
+
+      {/* Watchlist seeded toast */}
+      {showSeededToast && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 100,
+            maxWidth: '480px',
+            width: 'calc(100% - 40px)',
+            padding: '14px 18px',
+            background: '#1a1a1a',
+            color: '#fff',
+            fontSize: '13px',
+            lineHeight: '1.5',
+            borderRadius: '12px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '12px',
+          }}
+        >
+          <span style={{ flex: 1 }}>
+            We added a few popular tickers from your sectors to get you started. You can remove them from your watchlist anytime.
+          </span>
+          <button
+            onClick={() => setShowSeededToast(false)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'rgba(255,255,255,0.6)',
+              fontSize: '16px',
+              cursor: 'pointer',
+              padding: '0 2px',
+              lineHeight: 1,
+              flexShrink: 0,
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       <div style={{ maxWidth: '620px', margin: '0 auto', padding: '24px 20px' }}>
         {/* Digest tab */}
