@@ -1,7 +1,7 @@
 import { getCompanyNews, getMarketNews } from '@/lib/finnhub/client'
 import type { NewsArticle } from '@/types/Finnhub'
 import type { WizardData } from '@/types/Thesis'
-import type { DetectedEvent } from '@/types/Agent'
+import type { DetectedEvent, TickerEventGroup } from '@/types/Agent'
 
 function toDateString(date: Date): string {
   return date.toISOString().split('T')[0]
@@ -162,4 +162,35 @@ export async function detectRelevantEvents(userProfile: WizardData): Promise<Det
     relevanceScore: Math.min(score, 1),
     matchReason: reason,
   }))
+}
+
+/** Group events by their primary ticker so the pipeline generates one idea per ticker. */
+export function groupEventsByTicker(events: DetectedEvent[], maxTickers: number = 10): TickerEventGroup[] {
+  const groups = new Map<string, DetectedEvent[]>()
+
+  for (const event of events) {
+    const ticker = event.tickers[0]
+    if (!ticker) continue
+    const existing = groups.get(ticker)
+    if (existing) {
+      existing.push(event)
+    } else {
+      groups.set(ticker, [event])
+    }
+  }
+
+  const result: TickerEventGroup[] = Array.from(groups.entries()).map(
+    ([ticker, tickerEvents]) => ({
+      ticker,
+      events: tickerEvents.sort((a, b) => b.relevanceScore - a.relevanceScore),
+      maxRelevanceScore: Math.max(...tickerEvents.map((e) => e.relevanceScore)),
+    })
+  )
+
+  // Sort by highest relevance, cap at max
+  result.sort((a, b) => b.maxRelevanceScore - a.maxRelevanceScore)
+
+  console.log(`[agent:eventDetector] Grouped into ${result.length} ticker groups (cap ${maxTickers}): ${result.slice(0, maxTickers).map((g) => `${g.ticker}(${g.events.length} events)`).join(', ')}`)
+
+  return result.slice(0, maxTickers)
 }

@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { TRADE_IDEA_SYSTEM_PROMPT, buildTradeIdeaUserPrompt } from './prompts'
-import type { EnrichedEvent, TradeIdeaLLMResponse, TradeIdeaResult } from '@/types/Agent'
+import { TRADE_IDEA_SYSTEM_PROMPT, buildTradeIdeaUserPrompt, buildTickerGroupUserPrompt } from './prompts'
+import type { EnrichedEvent, EnrichedTickerGroup, TradeIdeaLLMResponse, TradeIdeaResult } from '@/types/Agent'
 import type { WizardData } from '@/types/Thesis'
 
 const LLM_MODEL = 'claude-sonnet-4-20250514'
@@ -64,6 +64,23 @@ export async function generateTradeIdea(
   const client = new Anthropic()
 
   const userPrompt = buildTradeIdeaUserPrompt(enrichedEvent, userProfile)
+  return callLLMForIdea(client, userPrompt)
+}
+
+export async function generateTradeIdeaForTickerGroup(
+  enrichedGroup: EnrichedTickerGroup,
+  userProfile: WizardData
+): Promise<TradeIdeaResult | null> {
+  const client = new Anthropic()
+
+  const userPrompt = buildTickerGroupUserPrompt(enrichedGroup, userProfile)
+  return callLLMForIdea(client, userPrompt)
+}
+
+async function callLLMForIdea(
+  client: Anthropic,
+  userPrompt: string
+): Promise<TradeIdeaResult | null> {
   const startTime = Date.now()
 
   const response = await client.messages.create({

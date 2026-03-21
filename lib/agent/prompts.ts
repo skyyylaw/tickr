@@ -1,4 +1,4 @@
-import type { EnrichedEvent, EnrichedEarningsData, Source } from '@/types/Agent'
+import type { EnrichedEvent, EnrichedTickerGroup, EnrichedEarningsData, Source } from '@/types/Agent'
 import type { WizardData } from '@/types/Thesis'
 import type { NewsArticle } from '@/types/Finnhub'
 
@@ -111,6 +111,63 @@ export function buildTradeIdeaUserPrompt(enriched: EnrichedEvent, userProfile: W
 
   if (enriched.quote || enriched.profile || enriched.metrics) {
     const dataLines: string[] = [`## Ticker Data: ${ticker}`]
+
+    if (enriched.profile) {
+      dataLines.push(`Company: ${enriched.profile.name} (${enriched.profile.exchange})`)
+      dataLines.push(`Industry: ${enriched.profile.industry}`)
+      dataLines.push(`Market cap: $${(enriched.profile.marketCap * 1_000_000).toLocaleString()}`)
+    }
+
+    if (enriched.quote) {
+      dataLines.push(`Current price: $${enriched.quote.price.toFixed(2)}`)
+      dataLines.push(`Today's change: ${enriched.quote.changePercent >= 0 ? '+' : ''}${enriched.quote.changePercent.toFixed(2)}%`)
+    }
+
+    if (enriched.metrics) {
+      dataLines.push(`\n### Momentum Metrics (for your analysis — translate to plain language for the user)`)
+      dataLines.push(`1-week price change: ${enriched.metrics.weekChangePercent >= 0 ? '+' : ''}${enriched.metrics.weekChangePercent.toFixed(1)}%`)
+      dataLines.push(`1-month price change: ${enriched.metrics.monthChangePercent >= 0 ? '+' : ''}${enriched.metrics.monthChangePercent.toFixed(1)}%`)
+      dataLines.push(`Distance from 30-day high: ${enriched.metrics.percentFrom52wHigh.toFixed(1)}% below`)
+      dataLines.push(`Distance from 30-day low: ${enriched.metrics.percentFrom52wLow.toFixed(1)}% above`)
+      dataLines.push(`Relative volume (today vs 30-day avg): ${enriched.metrics.relativeVolume.toFixed(1)}x`)
+    }
+
+    sections.push(dataLines.join('\n'))
+  }
+
+  if (enriched.tavilyContext.length > 0) {
+    const contextLines = enriched.tavilyContext
+      .slice(0, 5)
+      .map((r) => `- ${r.title}: ${r.content.slice(0, 300)}`)
+    sections.push(`## Additional Context\n${contextLines.join('\n')}`)
+  }
+
+  if (enriched.sources.length > 0) {
+    sections.push(`## Sources\n${formatSources(enriched.sources)}`)
+  }
+
+  return sections.join('\n\n')
+}
+
+export function buildTickerGroupUserPrompt(enriched: EnrichedTickerGroup, userProfile: WizardData): string {
+  const sections: string[] = []
+
+  sections.push(`## Your Investor Profile\n${formatThesis(userProfile)}`)
+
+  // All events for this ticker
+  sections.push(`## Events for ${enriched.ticker} (${enriched.events.length} event${enriched.events.length > 1 ? 's' : ''})`)
+  for (let i = 0; i < enriched.events.length; i++) {
+    const event = enriched.events[i]
+    const eventTime = new Date(event.datetime * 1000).toISOString()
+    sections.push(`### Event ${i + 1}\nHeadline: ${event.headline}\nSummary: ${event.summary}\nSource: ${event.source}\nTime: ${eventTime}\nRelevance: ${event.relevanceScore.toFixed(2)} (${event.matchReason})`)
+  }
+
+  if (enriched.events.length > 1) {
+    sections.push(`IMPORTANT: You have multiple events for ${enriched.ticker}. Weigh all bullish and bearish signals against each other and produce ONE directional call (buy, sell, or hold). Do NOT ignore conflicting signals — acknowledge them in your reasoning.`)
+  }
+
+  if (enriched.quote || enriched.profile || enriched.metrics) {
+    const dataLines: string[] = [`## Ticker Data: ${enriched.ticker}`]
 
     if (enriched.profile) {
       dataLines.push(`Company: ${enriched.profile.name} (${enriched.profile.exchange})`)

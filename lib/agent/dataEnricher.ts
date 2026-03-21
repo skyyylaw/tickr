@@ -2,7 +2,7 @@ import { getQuote, getCompanyProfile, getCandles } from '@/lib/finnhub/client'
 import { search as tavilySearch } from '@/lib/tavily/client'
 import type { Candles, Quote } from '@/types/Finnhub'
 import type { WizardData } from '@/types/Thesis'
-import type { DetectedEvent, EnrichedEvent, TickerMetrics, Source } from '@/types/Agent'
+import type { DetectedEvent, EnrichedEvent, EnrichedTickerGroup, TickerEventGroup, TickerMetrics, Source } from '@/types/Agent'
 
 function computeTickerMetrics(
   candles: Candles | null,
@@ -138,6 +138,103 @@ export async function enrichEventData(
 
   return {
     event,
+    quote,
+    profile,
+    metrics,
+    sources,
+    tavilyContext: tavilyResults,
+    searchQueries,
+  }
+}
+
+function buildGroupSources(
+  events: DetectedEvent[],
+  tavilyResults: { title: string; url: string }[]
+): Source[] {
+  const sources: Source[] = []
+  const seenUrls = new Set<string>()
+  let nextId = 1
+
+  for (const event of events) {
+    if (!seenUrls.has(event.url)) {
+      sources.push({
+        id: nextId++,
+        title: event.headline,
+        url: event.url,
+        publisher: event.source,
+      })
+      seenUrls.add(event.url)
+    }
+  }
+
+  for (const result of tavilyResults) {
+    if (!seenUrls.has(result.url)) {
+      sources.push({
+        id: nextId++,
+        title: result.title,
+        url: result.url,
+        publisher: 'Tavily',
+      })
+      seenUrls.add(result.url)
+    }
+  }
+
+  return sources
+}
+
+export async function enrichTickerGroup(
+  group: TickerEventGroup,
+  userProfile: WizardData
+): Promise<EnrichedTickerGroup> {
+  const { ticker, events } = group
+
+  const now = Math.floor(Date.now() / 1000)
+  const thirtyDaysAgo = now - 30 * 86400
+
+  const headlines = events.map((e) => e.headline).join('; ')
+  const sectorContext = userProfile.sectors.length > 0
+    ? ` impact on ${userProfile.sectors[0]}`
+    : ''
+  const searchQuery = `${ticker} ${headlines.slice(0, 200)}${sectorContext}`
+  const searchQueries = [
+    `quote:${ticker}`,
+    `profile:${ticker}`,
+    `candles:${ticker}`,
+    `tavily:${searchQuery.slice(0, 300)}`,
+  ]
+
+  const results = await Promise.allSettled([
+    getQuote(ticker),
+    getCompanyProfile(ticker),
+    getCandles(ticker, 'D', thirtyDaysAgo, now),
+    tavilySearch(searchQuery.slice(0, 400), { maxResults: 5 }),
+  ])
+
+  const quote = results[0].status === 'fulfilled' ? results[0].value : null
+  const profile = results[1].status === 'fulfilled' ? results[1].value : null
+  const tavilyResults = results[3].status === 'fulfilled' ? results[3].value : []
+
+  if (results[0].status === 'rejected') console.error(`[agent] Quote fetch failed for ${ticker}:`, results[0].reason)
+  if (results[1].status === 'rejected') console.error(`[agent] Profile fetch failed for ${ticker}:`, results[1].reason)
+  if (results[3].status === 'rejected') console.error(`[agent] Tavily search failed for ${ticker}:`, results[3].reason)
+
+  let metrics: TickerMetrics | null = null
+  if (results[2].status === 'fulfilled') {
+    metrics = computeTickerMetrics(results[2].value, quote)
+  }
+  if (results[2].status === 'rejected') {
+    const reason = results[2].reason
+    const is403 = reason?.status === 403 || reason?.message?.includes('403')
+    if (!is403) {
+      console.error(`[agent] Candles fetch failed for ${ticker}:`, reason)
+    }
+  }
+
+  const sources = buildGroupSources(events, tavilyResults)
+
+  return {
+    ticker,
+    events,
     quote,
     profile,
     metrics,

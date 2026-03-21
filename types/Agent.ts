@@ -39,6 +39,23 @@ export interface EnrichedEvent {
   searchQueries: string[]
 }
 
+export interface TickerEventGroup {
+  ticker: string
+  events: DetectedEvent[]
+  maxRelevanceScore: number
+}
+
+export interface EnrichedTickerGroup {
+  ticker: string
+  events: DetectedEvent[]
+  quote: Quote | null
+  profile: CompanyProfile | null
+  metrics: TickerMetrics | null
+  sources: Source[]
+  tavilyContext: TavilySearchResult[]
+  searchQueries: string[]
+}
+
 export interface EnrichedEarningsData {
   ticker: string
   year: number

@@ -1,7 +1,7 @@
 import { getServiceClient } from '@/lib/supabase/service'
-import { detectRelevantEvents } from './eventDetector'
-import { enrichEventData } from './dataEnricher'
-import { generateTradeIdea } from './ideaGenerator'
+import { detectRelevantEvents, groupEventsByTicker } from './eventDetector'
+import { enrichTickerGroup } from './dataEnricher'
+import { generateTradeIdeaForTickerGroup } from './ideaGenerator'
 import { checkAndGenerateEarningsDigests } from './earningsTrigger'
 import type { WizardData } from '@/types/Thesis'
 import type { PipelineResult } from '@/types/Agent'
@@ -81,13 +81,17 @@ export async function runAgentPipeline(userId: string): Promise<PipelineResult> 
         return
       }
 
-      for (const event of events) {
+      // Group events by ticker → one idea per ticker, no contradictions
+      const tickerGroups = groupEventsByTicker(events)
+      console.log(`[agent:pipeline] Processing ${tickerGroups.length} ticker group(s)`)
+
+      for (const group of tickerGroups) {
         try {
-          const enriched = await enrichEventData(event, userProfile)
-          const result = await generateTradeIdea(enriched, userProfile)
+          const enriched = await enrichTickerGroup(group, userProfile)
+          const result = await generateTradeIdeaForTickerGroup(enriched, userProfile)
 
           if (!result) {
-            console.log(`[agent] No trade idea generated for: ${event.headline}`)
+            console.log(`[agent] No trade idea generated for ${group.ticker} (${group.events.length} events)`)
             continue
           }
 
@@ -100,7 +104,7 @@ export async function runAgentPipeline(userId: string): Promise<PipelineResult> 
             .insert({
               user_id: userId,
               trigger_type: 'manual',
-              triggering_event_data: event,
+              triggering_event_data: group.events,
               user_thesis_snapshot: userProfile,
               search_queries: enriched.searchQueries,
               retrieved_data: {
@@ -142,7 +146,7 @@ export async function runAgentPipeline(userId: string): Promise<PipelineResult> 
               sources: idea.sources,
               confidence_score: idea.confidence,
               time_horizon: idea.time_horizon,
-              triggering_event: event.headline,
+              triggering_event: group.events.map((e) => e.headline).join(' | '),
               price_at_generation: enriched.quote?.price || null,
               status: 'active',
               extra_data: null,
@@ -159,8 +163,8 @@ export async function runAgentPipeline(userId: string): Promise<PipelineResult> 
           }
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err)
-          console.error(`[agent] Failed to process event "${event.headline}":`, message)
-          errors.push(`Event "${event.headline.slice(0, 50)}...": ${message}`)
+          console.error(`[agent] Failed to process ticker group "${group.ticker}":`, message)
+          errors.push(`Ticker ${group.ticker}: ${message}`)
         }
       }
     })(),
