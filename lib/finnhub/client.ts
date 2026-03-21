@@ -8,6 +8,7 @@ import {
   ANALYST_DATA_TTL,
   EARNINGS_TRANSCRIPT_TTL,
   SEARCH_TTL,
+  PEERS_TTL,
 } from '@/lib/cache/ttl'
 import { finnhubRateLimiter } from './rateLimiter'
 import type {
@@ -370,4 +371,20 @@ export async function getEpsEstimates(ticker: string): Promise<EpsEstimate[]> {
 
   await cache.set(cacheKey, estimates, 'finnhub', ANALYST_DATA_TTL)
   return estimates
+}
+
+export async function getPeers(ticker: string): Promise<string[]> {
+  const cacheKey = `finnhub:peers:${ticker}`
+
+  const cached = await cache.get<string[]>(cacheKey)
+  if (cached !== null) return cached
+
+  const data = await fetchFinnhub<string[]>('/stock/peers', { symbol: ticker })
+  if (!data) return []
+
+  // Filter out the ticker itself and any non-US symbols (containing dots)
+  const peers = data.filter((s) => s !== ticker && !s.includes('.'))
+
+  await cache.set(cacheKey, peers, 'finnhub', PEERS_TTL)
+  return peers
 }

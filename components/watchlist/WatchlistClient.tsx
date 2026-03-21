@@ -23,6 +23,11 @@ interface WatchlistClientProps {
   initialItems: WatchlistItemWithQuote[]
 }
 
+interface PeerSuggestion {
+  ticker: string
+  companyName: string
+}
+
 export function WatchlistClient({ initialItems }: WatchlistClientProps) {
   const [items, setItems] = useState<WatchlistItemWithQuote[]>(initialItems)
   const [tickerInput, setTickerInput] = useState('')
@@ -35,8 +40,12 @@ export function WatchlistClient({ initialItems }: WatchlistClientProps) {
   const [positionModal, setPositionModal] = useState<string | null>(null)
   const [positionForm, setPositionForm] = useState({ shares: '', price: '', date: '' })
   const [positionError, setPositionError] = useState<string | null>(null)
+  const [peerSuggestions, setPeerSuggestions] = useState<PeerSuggestion[]>([])
+  const [peersDismissed, setPeersDismissed] = useState(false)
+  const [addingPeer, setAddingPeer] = useState<string | null>(null)
   const searchRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastPeerTickersRef = useRef<string>('')
 
   // Close search dropdown on outside click
   useEffect(() => {
@@ -61,6 +70,42 @@ export function WatchlistClient({ initialItems }: WatchlistClientProps) {
       } catch { /* silent */ }
     }, 60_000)
     return () => clearInterval(interval)
+  }, [])
+
+  // Fetch peer suggestions when watchlist changes
+  useEffect(() => {
+    const tickerKey = items.map((i) => i.ticker).sort().join(',')
+    if (tickerKey === lastPeerTickersRef.current || items.length === 0) return
+    lastPeerTickersRef.current = tickerKey
+    setPeersDismissed(false)
+
+    const controller = new AbortController()
+    fetch('/api/watchlist/peers', { signal: controller.signal })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data) setPeerSuggestions(data.suggestions ?? [])
+      })
+      .catch(() => { /* aborted or network error */ })
+
+    return () => controller.abort()
+  }, [items])
+
+  // Add a peer suggestion to watchlist
+  const addPeer = useCallback(async (ticker: string) => {
+    setAddingPeer(ticker)
+    try {
+      const res = await fetch('/api/watchlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticker }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setItems((prev) => [data.item, ...prev])
+        setPeerSuggestions((prev) => prev.filter((p) => p.ticker !== ticker))
+      }
+    } catch { /* silent */ }
+    finally { setAddingPeer(null) }
   }, [])
 
   // Debounced ticker search
@@ -785,6 +830,89 @@ export function WatchlistClient({ initialItems }: WatchlistClientProps) {
             )}
           </div>
         ))}
+
+        {/* You might also like */}
+        {!peersDismissed && peerSuggestions.length > 0 && (
+          <div
+            style={{
+              marginTop: '24px',
+              padding: '16px 20px',
+              background: colors.surface,
+              border: `1px solid ${colors.borderLight}`,
+              borderRadius: '14px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <span style={{ color: colors.textMuted, fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em' }}>
+                YOU MIGHT ALSO LIKE
+              </span>
+              <button
+                onClick={() => setPeersDismissed(true)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: colors.textMuted,
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  padding: '0 2px',
+                  lineHeight: 1,
+                }}
+                title="Dismiss"
+              >
+                ×
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {peerSuggestions.map((peer) => (
+                <div
+                  key={peer.ticker}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 12px',
+                    background: colors.bg,
+                    border: `1px solid ${colors.borderLight}`,
+                    borderRadius: '10px',
+                  }}
+                >
+                  <span
+                    style={{
+                      color: colors.text,
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}
+                  >
+                    {peer.ticker}
+                  </span>
+                  {peer.companyName && (
+                    <span style={{ color: colors.textMuted, fontSize: '11px', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {peer.companyName}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => addPeer(peer.ticker)}
+                    disabled={addingPeer === peer.ticker}
+                    style={{
+                      background: 'transparent',
+                      border: `1px solid ${colors.border}`,
+                      borderRadius: '6px',
+                      padding: '3px 10px',
+                      color: addingPeer === peer.ticker ? colors.textMuted : colors.text,
+                      fontSize: '11px',
+                      fontWeight: 500,
+                      cursor: addingPeer === peer.ticker ? 'not-allowed' : 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {addingPeer === peer.ticker ? '...' : 'Add'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Price refresh note */}
         {items.length > 0 && (

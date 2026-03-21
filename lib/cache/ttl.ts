@@ -6,3 +6,4 @@ export const SYMBOL_SEARCH_TTL = 86400
 export const EARNINGS_TRANSCRIPT_TTL = 86400
 export const ANALYST_DATA_TTL = 21600
 export const CANDLES_TTL = 3600
+export const PEERS_TTL = 86400
