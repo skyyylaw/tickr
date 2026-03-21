@@ -7,6 +7,8 @@ import { ChipSelect } from './ChipSelect'
 import { CardSelect, type CardOption } from './CardSelect'
 import { RiskSlider } from './RiskSlider'
 import { TickerSearch } from './TickerSearch'
+import { TickerSuggestions } from './TickerSuggestions'
+import { getSuggestedTickers } from '@/lib/data/tickerSuggestions'
 
 // ─── Step transition container ───────────────────────────────────────────────
 
@@ -228,6 +230,19 @@ function buildSteps(data: WizardData, updateData: UpdateDataFn): StepConfig[] {
       ),
     },
     {
+      title: 'Based on your interests, here are some popular tickers',
+      subtitle: 'Tap to select — these will be added to your watchlist',
+      optional: true,
+      isValid: () => true,
+      component: (
+        <TickerSuggestions
+          suggestions={getSuggestedTickers(data.sectors, data.industries)}
+          selected={data.interested_tickers}
+          onChange={(v) => updateData('interested_tickers', v)}
+        />
+      ),
+    },
+    {
       title: "Any tickers you're already watching?",
       subtitle: 'Search US stocks — optional',
       optional: true,
@@ -257,7 +272,7 @@ function buildSteps(data: WizardData, updateData: UpdateDataFn): StepConfig[] {
 
 // ─── Main wizard ──────────────────────────────────────────────────────────────
 
-const TOTAL_STEPS = 11
+const TOTAL_STEPS = 12
 
 export function OnboardingWizard() {
   const [currentStep, setCurrentStep] = useState(0)
