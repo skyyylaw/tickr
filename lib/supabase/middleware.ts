@@ -58,10 +58,10 @@ export async function updateSession(request: NextRequest) {
       return cleanResponse;
     }
 
-    // Every other route without a valid user → redirect to /login
+    // Every other route without a valid user → redirect to landing page
     // and clear any stale sb-* cookies.
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = "/";
     const redirectResponse = NextResponse.redirect(url);
     deleteAuthCookies(request, redirectResponse);
     return redirectResponse;

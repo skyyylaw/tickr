@@ -13,7 +13,7 @@ export async function saveThesis(data: WizardData): Promise<void> {
   } = await supabase.auth.getUser()
 
   if (authError || !user) {
-    redirect('/login')
+    redirect('/')
   }
 
   // Snapshot current profile before overwriting (for thesis history)
