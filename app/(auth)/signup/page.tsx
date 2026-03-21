@@ -41,11 +41,11 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-tickr-bg px-4">
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-serif italic tracking-tight">tickr</h1>
-          <p className="mt-2 text-sm text-gray-500">
+          <h1 className="text-3xl font-serif italic tracking-tight text-tickr-text">tickr</h1>
+          <p className="mt-2 text-sm text-tickr-secondary">
             Create your account
           </p>
         </div>
@@ -58,7 +58,7 @@ export default function SignupPage() {
           )}
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="email" className="block text-sm font-medium text-tickr-text">
               Email
             </label>
             <input
@@ -67,13 +67,13 @@ export default function SignupPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+              className="mt-1 block w-full rounded-[10px] border border-tickr-border px-3 py-2 text-sm text-tickr-text placeholder:text-tickr-muted focus:border-tickr-text focus:outline-none focus:ring-0"
               placeholder="you@example.com"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="password" className="block text-sm font-medium text-tickr-text">
               Password
             </label>
             <input
@@ -82,14 +82,14 @@ export default function SignupPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+              className="mt-1 block w-full rounded-[10px] border border-tickr-border px-3 py-2 text-sm text-tickr-text placeholder:text-tickr-muted focus:border-tickr-text focus:outline-none focus:ring-0"
               placeholder="••••••••"
               minLength={6}
             />
           </div>
 
           <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-tickr-text">
               Confirm Password
             </label>
             <input
@@ -98,7 +98,7 @@ export default function SignupPage() {
               required
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+              className="mt-1 block w-full rounded-[10px] border border-tickr-border px-3 py-2 text-sm text-tickr-text placeholder:text-tickr-muted focus:border-tickr-text focus:outline-none focus:ring-0"
               placeholder="••••••••"
               minLength={6}
             />
@@ -107,15 +107,15 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+            className="w-full rounded-[10px] bg-tickr-text px-4 py-2 text-sm font-medium text-white hover:bg-black/90 disabled:opacity-50"
           >
             {loading ? "Creating account..." : "Create Account"}
           </button>
         </form>
 
-        <p className="text-center text-sm text-gray-500">
+        <p className="text-center text-sm text-tickr-secondary">
           Already have an account?{" "}
-          <Link href="/login" className="font-medium text-black hover:underline">
+          <Link href="/login" className="font-medium text-tickr-text hover:underline">
             Sign in
           </Link>
         </p>

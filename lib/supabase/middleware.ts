@@ -2,13 +2,22 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const AUTH_ROUTES = ["/login", "/signup"];
-const PUBLIC_ROUTES = ["/", ...AUTH_ROUTES];
-const DASHBOARD_ROUTES = ["/feed", "/watchlist", "/profile", "/settings"];
+const PROTECTED_ROUTES = ["/feed", "/watchlist", "/profile", "/settings", "/onboarding"];
 
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  });
+  const pathname = request.nextUrl.pathname;
+
+  // ── Landing page: pass through immediately, no Supabase interaction ──
+  // This guarantees no session cookies are created/refreshed for visitors
+  // who haven't logged in (including incognito windows).
+  if (pathname === "/") {
+    return NextResponse.next({ request });
+  }
+
+  // ── From here on, every route needs a session check ──
+  // Build the response and Supabase client together so setAll can write
+  // refreshed tokens into the response cookies.
+  let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,9 +31,7 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
-          supabaseResponse = NextResponse.next({
-            request,
-          });
+          supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           );
@@ -33,28 +40,44 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
+  // Validate the session by calling getUser() — this hits the Supabase
+  // auth server and won't trust a stale JWT on its own.
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const pathname = request.nextUrl.pathname;
+  // ── No valid user ─────────────────────────────────────────────────────
+  // IMPORTANT: Never return `supabaseResponse` here — it may contain
+  // sb-* Set-Cookie headers injected by the setAll callback during
+  // getUser(). Returning those would re-create a ghost session.
+  if (!user) {
+    if (AUTH_ROUTES.includes(pathname)) {
+      // Create a clean response — no Supabase cookies leak through
+      const cleanResponse = NextResponse.next({ request });
+      deleteAuthCookies(request, cleanResponse);
+      return cleanResponse;
+    }
 
-  // Redirect unauthenticated users to /login (unless on a public route)
-  if (!user && !PUBLIC_ROUTES.includes(pathname)) {
+    // Every other route without a valid user → redirect to /login
+    // and clear any stale sb-* cookies.
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
+    const redirectResponse = NextResponse.redirect(url);
+    deleteAuthCookies(request, redirectResponse);
+    return redirectResponse;
   }
 
-  // Redirect authenticated users away from auth pages to /feed
-  if (user && AUTH_ROUTES.includes(pathname)) {
+  // ── Valid user ─────────────────────────────────────────────────────────
+
+  // Authenticated users on auth pages → redirect to /feed
+  if (AUTH_ROUTES.includes(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/feed";
     return NextResponse.redirect(url);
   }
 
-  // Onboarding gate: check completion status for dashboard routes and /onboarding
-  if (user && (DASHBOARD_ROUTES.includes(pathname) || pathname === "/onboarding")) {
+  // Onboarding gate: only runs for protected routes and /onboarding
+  if (PROTECTED_ROUTES.includes(pathname)) {
     const { data: profile } = await supabase
       .from("user_profiles")
       .select("investment_goals")
@@ -65,14 +88,12 @@ export async function updateSession(request: NextRequest) {
       Array.isArray(profile?.investment_goals) &&
       profile.investment_goals.length > 0;
 
-    // Incomplete onboarding → force to /onboarding
     if (!hasCompletedOnboarding && pathname !== "/onboarding") {
       const url = request.nextUrl.clone();
       url.pathname = "/onboarding";
       return NextResponse.redirect(url);
     }
 
-    // Already onboarded → skip /onboarding, go to feed
     if (hasCompletedOnboarding && pathname === "/onboarding") {
       const url = request.nextUrl.clone();
       url.pathname = "/feed";
@@ -81,4 +102,18 @@ export async function updateSession(request: NextRequest) {
   }
 
   return supabaseResponse;
+}
+
+// ── Helper ────────────────────────────────────────────────────────────────
+
+function deleteAuthCookies(request: NextRequest, response: NextResponse) {
+  for (const cookie of request.cookies.getAll()) {
+    if (cookie.name.startsWith("sb-")) {
+      // Set explicit path=/ to ensure the delete matches the original cookie
+      response.cookies.set(cookie.name, "", {
+        maxAge: 0,
+        path: "/",
+      });
+    }
+  }
 }

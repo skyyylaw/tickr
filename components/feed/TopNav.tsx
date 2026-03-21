@@ -38,18 +38,24 @@ export function TopNav({ activeTab, onTabChange }: TopNavProps) {
           padding: '16px 0 0 0',
         }}
       >
-        <span
-          style={{
-            fontFamily: "'Noto Serif', Georgia, serif",
-            fontStyle: 'italic',
-            fontWeight: 700,
-            fontSize: '22px',
-            color: '#1a1a1a',
-            letterSpacing: '-0.02em',
-          }}
+        <Link
+          href="/feed"
+          style={{ textDecoration: 'none' }}
+          onClick={() => onTabChange('for-you')}
         >
-          tickr
-        </span>
+          <span
+            style={{
+              fontFamily: "'Noto Serif', Georgia, serif",
+              fontStyle: 'italic',
+              fontWeight: 700,
+              fontSize: '22px',
+              color: '#1a1a1a',
+              letterSpacing: '-0.02em',
+            }}
+          >
+            tickr
+          </span>
+        </Link>
         <div
           style={{
             position: 'absolute' as const,

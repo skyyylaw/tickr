@@ -21,7 +21,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Tickr — AI Investment Research",
+  title: "tickr — AI Investment Research",
   description: "AI-native investment research platform",
 };
 
