@@ -109,7 +109,10 @@ export async function detectRelevantEvents(userProfile: WizardData): Promise<Det
 
   console.log(`[agent:eventDetector] Unique articles after dedup: ${unique.length}`)
 
-  const MIN_RELEVANCE_THRESHOLD = 0.15
+  const DEFAULT_THRESHOLD = 0.15
+  const MIN_THRESHOLD = 0.05
+  const MIN_EVENTS = 3
+  const STEP = 0.05
 
   const allScored = unique.map((article) => {
     const { score, reason } = scoreArticle(article, userProfile)
@@ -121,17 +124,28 @@ export async function detectRelevantEvents(userProfile: WizardData): Promise<Det
   for (const { score } of allScored) {
     if (score >= 0.5) scoreDistribution.above05++
     else if (score >= 0.3) scoreDistribution.above03++
-    else if (score >= MIN_RELEVANCE_THRESHOLD) scoreDistribution.above015++
+    else if (score >= DEFAULT_THRESHOLD) scoreDistribution.above015++
     else scoreDistribution.below015++
   }
-  console.log(`[agent:eventDetector] Score distribution: >=0.5: ${scoreDistribution.above05}, >=0.3: ${scoreDistribution.above03}, >=${MIN_RELEVANCE_THRESHOLD}: ${scoreDistribution.above015}, <${MIN_RELEVANCE_THRESHOLD}: ${scoreDistribution.below015}`)
+  console.log(`[agent:eventDetector] Score distribution: >=0.5: ${scoreDistribution.above05}, >=0.3: ${scoreDistribution.above03}, >=${DEFAULT_THRESHOLD}: ${scoreDistribution.above015}, <${DEFAULT_THRESHOLD}: ${scoreDistribution.below015}`)
 
-  const scored = allScored
-    .filter(({ score }) => score >= MIN_RELEVANCE_THRESHOLD)
+  // Auto-tune: progressively lower threshold until we have enough events
+  let threshold = DEFAULT_THRESHOLD
+  let passing = allScored.filter(({ score }) => score >= threshold)
+  while (passing.length < MIN_EVENTS && threshold > MIN_THRESHOLD) {
+    threshold = Math.max(threshold - STEP, MIN_THRESHOLD)
+    passing = allScored.filter(({ score }) => score >= threshold)
+  }
+
+  if (threshold < DEFAULT_THRESHOLD) {
+    console.log(`[agent:eventDetector] Auto-tuned threshold from ${DEFAULT_THRESHOLD} to ${threshold.toFixed(2)} (needed ${MIN_EVENTS} events, found ${passing.length})`)
+  }
+
+  const scored = passing
     .sort((a, b) => b.score - a.score)
     .slice(0, 10)
 
-  console.log(`[agent:eventDetector] Articles passing threshold (${MIN_RELEVANCE_THRESHOLD}): ${allScored.filter(({ score }) => score >= MIN_RELEVANCE_THRESHOLD).length}`)
+  console.log(`[agent:eventDetector] Articles passing threshold (${threshold.toFixed(2)}): ${passing.length}`)
   console.log(`[agent:eventDetector] Top events selected: ${scored.length}`)
   for (const { article, score, reason } of scored) {
     console.log(`[agent:eventDetector]   score=${score.toFixed(2)} reason="${reason}" headline="${article.headline.slice(0, 80)}"`)
