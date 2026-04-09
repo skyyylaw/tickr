@@ -28,6 +28,7 @@ export function FeedClient({ initialIdeas, initialDigest, initialFeedbackMap, wa
   const [loadingTab, setLoadingTab] = useState(false)
   const [showSeededToast, setShowSeededToast] = useState(watchlistSeeded ?? false)
   const [feedbackMap, setFeedbackMap] = useState<FeedbackMap>(initialFeedbackMap ?? {})
+  const [fadingIds, setFadingIds] = useState<Set<string>>(new Set())
 
   // Viewport time tracking
   const entryTimes = useRef<Map<string, number>>(new Map())
@@ -193,24 +194,30 @@ export function FeedClient({ initialIdeas, initialDigest, initialFeedbackMap, wa
   }
 
   function handleThumbsDown(id: string, reason: string) {
-    const current = feedbackMap[id]
-    if (current === 'thumbs_down') {
-      // Undo: remove the action
-      setFeedbackMap((prev) => {
-        const next = { ...prev }
-        delete next[id]
+    // Set feedback state + log action (POST auto-clears any opposite)
+    setFeedbackMap((prev) => ({ ...prev, [id]: 'thumbs_down' }))
+    logAction(id, 'thumbs_down', { feedback_reason: reason })
+
+    // Dismiss the idea: fade out then remove from For You feed
+    updateIdeaStatus(id, 'dismissed')
+    logAction(id, 'dismiss')
+    if (expandedId === id) setExpandedId(null)
+
+    setFadingIds((prev) => new Set(prev).add(id))
+    setTimeout(() => {
+      setFadingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(id)
         return next
       })
-      fetch('/api/actions', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action_type: 'thumbs_down', trade_idea_id: id }),
-      }).catch(() => {})
-    } else {
-      // Set thumbs_down (POST will also clear any opposite)
-      setFeedbackMap((prev) => ({ ...prev, [id]: 'thumbs_down' }))
-      logAction(id, 'thumbs_down', { feedback_reason: reason })
-    }
+      setIdeas((prev) => prev.filter((i) => i.id !== id))
+      // Invalidate cached dismissed tab so it re-fetches with this idea
+      setTabIdeas((prev) => {
+        const next = { ...prev }
+        delete next['dismissed']
+        return next
+      })
+    }, 300)
   }
 
   function handleExpand(id: string) {
@@ -242,6 +249,11 @@ export function FeedClient({ initialIdeas, initialDigest, initialFeedbackMap, wa
           if (el && observerRef.current) {
             observerRef.current.observe(el)
           }
+        }}
+        style={{
+          transition: 'opacity 300ms ease, transform 300ms ease',
+          opacity: fadingIds.has(idea.id) ? 0 : 1,
+          transform: fadingIds.has(idea.id) ? 'scale(0.97)' : 'scale(1)',
         }}
       >
         <FeedCard

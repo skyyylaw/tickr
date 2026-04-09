@@ -91,14 +91,11 @@ export function ActionButtons({
         style={{ ...btnStyle, color: (isThumbsDown || showFeedback) ? '#1a1a1a' : '#9a9a9a' }}
         onClick={(e) => {
           e.stopPropagation()
-          if (isThumbsDown) {
-            // Undo: call onThumbsDown with empty reason to trigger undo
-            onThumbsDown('')
-          } else {
+          if (!isThumbsDown) {
             setShowFeedback((v) => !v)
           }
         }}
-        title={isThumbsDown ? 'Remove not helpful' : 'Not helpful'}
+        title="Not helpful"
         aria-label="Thumbs down"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill={isThumbsDown ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
