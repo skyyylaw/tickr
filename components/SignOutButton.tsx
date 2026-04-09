@@ -5,7 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 export function SignOutButton() {
   async function handleSignOut() {
     const supabase = createClient()
-    await supabase.auth.signOut()
+    // scope: 'global' revokes all sessions, not just the current tab
+    await supabase.auth.signOut({ scope: 'global' })
+    // Server-side route ensures cookies are cleared even if client cleanup fails
+    await fetch('/api/auth/sign-out', { method: 'POST' })
     window.location.href = '/'
   }
 

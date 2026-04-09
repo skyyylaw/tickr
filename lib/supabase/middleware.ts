@@ -4,6 +4,9 @@ import { NextResponse, type NextRequest } from "next/server";
 const AUTH_ROUTES = ["/login", "/signup"];
 const PROTECTED_ROUTES = ["/feed", "/watchlist", "/profile", "/settings", "/onboarding"];
 
+// 7-day session lifetime — prevents indefinite sessions
+const SESSION_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days in seconds
+
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
@@ -12,6 +15,16 @@ export async function updateSession(request: NextRequest) {
   // who haven't logged in (including incognito windows).
   if (pathname === "/") {
     return NextResponse.next({ request });
+  }
+
+  // ── Auth routes: always show the form, never auto-redirect ──
+  // If a user explicitly navigates to /login or /signup, clear any
+  // existing session so they always see the form — never bounce them
+  // to /feed based on a potentially stale session.
+  if (AUTH_ROUTES.includes(pathname)) {
+    const cleanResponse = NextResponse.next({ request });
+    deleteAuthCookies(request, cleanResponse);
+    return cleanResponse;
   }
 
   // ── From here on, every route needs a session check ──
@@ -33,7 +46,11 @@ export async function updateSession(request: NextRequest) {
           );
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, {
+              ...options,
+              maxAge: SESSION_COOKIE_MAX_AGE,
+              path: "/",
+            })
           );
         },
       },
@@ -51,14 +68,7 @@ export async function updateSession(request: NextRequest) {
   // sb-* Set-Cookie headers injected by the setAll callback during
   // getUser(). Returning those would re-create a ghost session.
   if (!user) {
-    if (AUTH_ROUTES.includes(pathname)) {
-      // Create a clean response — no Supabase cookies leak through
-      const cleanResponse = NextResponse.next({ request });
-      deleteAuthCookies(request, cleanResponse);
-      return cleanResponse;
-    }
-
-    // Every other route without a valid user → redirect to landing page
+    // Every route without a valid user → redirect to landing page
     // and clear any stale sb-* cookies.
     const url = request.nextUrl.clone();
     url.pathname = "/";
@@ -68,13 +78,6 @@ export async function updateSession(request: NextRequest) {
   }
 
   // ── Valid user ─────────────────────────────────────────────────────────
-
-  // Authenticated users on auth pages → redirect to /feed
-  if (AUTH_ROUTES.includes(pathname)) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/feed";
-    return NextResponse.redirect(url);
-  }
 
   // Onboarding gate: only runs for protected routes and /onboarding
   if (PROTECTED_ROUTES.includes(pathname)) {
