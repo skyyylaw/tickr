@@ -222,10 +222,10 @@ Used by `getSuggestedTickers()` during onboarding and by `saveThesis()` server a
 
 | Schedule | Route | Purpose |
 |---|---|---|
-| Every 6h (`0 */6 * * *`) | `/api/cron/generate-ideas` | Run agent pipeline for all users |
-| Daily noon (`0 12 * * *`) | `/api/cron/generate-digests` | Generate daily briefings |
-| Daily 6pm (`0 18 * * *`) | `/api/cron/price-snapshots` | Capture prices for outcome tracking |
-| Every 6h at :30 (`30 */6 * * *`) | `/api/cron/cache-cleanup` | Purge expired api_cache rows |
+| Daily 6 AM UTC (`0 6 * * *`) | `/api/cron/price-snapshots` | Capture prices for outcome tracking |
+| Daily 11 AM UTC / 7 AM ET (`0 11 * * *`) | `/api/cron/generate-digests` | Generate daily briefings |
+| Daily 12 PM UTC / 8 AM ET (`0 12 * * *`) | `/api/cron/generate-ideas` | Run agent pipeline for all users |
+| Daily midnight UTC (`0 0 * * *`) | `/api/cron/cache-cleanup` | Purge expired api_cache rows |
 
 All cron routes authenticate via `CRON_SECRET` Bearer token.
 
