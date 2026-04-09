@@ -29,6 +29,7 @@ export function FeedClient({ initialIdeas, initialDigest, initialFeedbackMap, wa
   const [showSeededToast, setShowSeededToast] = useState(watchlistSeeded ?? false)
   const [feedbackMap, setFeedbackMap] = useState<FeedbackMap>(initialFeedbackMap ?? {})
   const [fadingIds, setFadingIds] = useState<Set<string>>(new Set())
+  const [activeFeedbackId, setActiveFeedbackId] = useState<string | null>(null)
 
   // Viewport time tracking
   const entryTimes = useRef<Map<string, number>>(new Map())
@@ -251,9 +252,10 @@ export function FeedClient({ initialIdeas, initialDigest, initialFeedbackMap, wa
           }
         }}
         style={{
-          transition: 'opacity 300ms ease, transform 300ms ease',
+          position: 'relative' as const,
+          zIndex: activeFeedbackId === idea.id ? 50 : undefined,
+          transition: 'opacity 300ms ease',
           opacity: fadingIds.has(idea.id) ? 0 : 1,
-          transform: fadingIds.has(idea.id) ? 'scale(0.97)' : 'scale(1)',
         }}
       >
         <FeedCard
@@ -267,6 +269,7 @@ export function FeedClient({ initialIdeas, initialDigest, initialFeedbackMap, wa
           onDismiss={() => handleDismiss(idea.id)}
           onThumbsUp={() => handleThumbsUp(idea.id)}
           onThumbsDown={(reason) => handleThumbsDown(idea.id, reason)}
+          onDropdownChange={(open) => setActiveFeedbackId(open ? idea.id : null)}
         />
       </div>
     ))

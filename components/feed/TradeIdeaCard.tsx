@@ -39,6 +39,7 @@ interface TradeIdeaCardProps {
   onDismiss: () => void
   onThumbsUp: () => void
   onThumbsDown: (reason: string) => void
+  onDropdownChange?: (open: boolean) => void
 }
 
 export function TradeIdeaCard({
@@ -52,6 +53,7 @@ export function TradeIdeaCard({
   onDismiss,
   onThumbsUp,
   onThumbsDown,
+  onDropdownChange,
 }: TradeIdeaCardProps) {
   const direction = (idea.direction ?? 'hold') as 'buy' | 'sell' | 'hold'
   const sources = idea.sources ?? []
@@ -91,6 +93,7 @@ export function TradeIdeaCard({
                   onSave={onSave}
                   onThumbsUp={onThumbsUp}
                   onThumbsDown={onThumbsDown}
+                  onDropdownChange={onDropdownChange}
                 />
               </div>
             </div>
@@ -134,6 +137,7 @@ export function TradeIdeaCard({
             onDismiss={onDismiss}
             onThumbsUp={onThumbsUp}
             onThumbsDown={onThumbsDown}
+            onDropdownChange={onDropdownChange}
           />
         </div>
       </div>

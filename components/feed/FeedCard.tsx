@@ -13,6 +13,7 @@ interface FeedCardProps {
   onDismiss: () => void
   onThumbsUp: () => void
   onThumbsDown: (reason: string) => void
+  onDropdownChange?: (open: boolean) => void
 }
 
 export function FeedCard(props: FeedCardProps) {

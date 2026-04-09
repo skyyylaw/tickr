@@ -21,6 +21,7 @@ interface ActionButtonsProps {
   onDismiss?: () => void
   onThumbsUp: () => void
   onThumbsDown: (reason: string) => void
+  onDropdownChange?: (open: boolean) => void
 }
 
 export function ActionButtons({
@@ -32,8 +33,14 @@ export function ActionButtons({
   onDismiss,
   onThumbsUp,
   onThumbsDown,
+  onDropdownChange,
 }: ActionButtonsProps) {
   const [showFeedback, setShowFeedback] = useState(false)
+
+  // Notify parent when dropdown opens/closes
+  useEffect(() => {
+    onDropdownChange?.(showFeedback)
+  }, [showFeedback, onDropdownChange])
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -60,7 +67,7 @@ export function ActionButtons({
   }
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', position: 'relative' as const }} ref={dropdownRef}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', position: 'relative' as const, zIndex: showFeedback ? 50 : undefined }} ref={dropdownRef}>
       {/* Save / Bookmark */}
       <button
         style={{ ...btnStyle, color: isSaved ? '#1a1a1a' : '#9a9a9a' }}

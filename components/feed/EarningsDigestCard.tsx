@@ -25,6 +25,7 @@ interface EarningsDigestCardProps {
   onDismiss: () => void
   onThumbsUp: () => void
   onThumbsDown: (reason: string) => void
+  onDropdownChange?: (open: boolean) => void
 }
 
 export function EarningsDigestCard({
@@ -38,6 +39,7 @@ export function EarningsDigestCard({
   onDismiss,
   onThumbsUp,
   onThumbsDown,
+  onDropdownChange,
 }: EarningsDigestCardProps) {
   const sources = idea.sources ?? []
   const quarterLabel = idea.extra_data?.quarter_label
@@ -83,6 +85,7 @@ export function EarningsDigestCard({
                   onSave={onSave}
                   onThumbsUp={onThumbsUp}
                   onThumbsDown={onThumbsDown}
+                  onDropdownChange={onDropdownChange}
                 />
               </div>
             </div>
@@ -139,6 +142,7 @@ export function EarningsDigestCard({
             onDismiss={onDismiss}
             onThumbsUp={onThumbsUp}
             onThumbsDown={onThumbsDown}
+            onDropdownChange={onDropdownChange}
           />
         </div>
       </div>
