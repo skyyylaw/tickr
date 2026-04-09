@@ -73,7 +73,7 @@ export function FeedClient({ initialIdeas, initialDigest, initialFeedbackMap, wa
   // ── Auto-refresh ───────────────────────────────────────────────────
   const refreshActive = useCallback(async () => {
     try {
-      const res = await fetch('/api/feed?status=active')
+      const res = await fetch('/api/feed?status=for-you')
       if (res.ok) {
         const data = await res.json()
         setIdeas(data.ideas ?? [])
@@ -163,7 +163,14 @@ export function FeedClient({ initialIdeas, initialDigest, initialFeedbackMap, wa
     const newStatus = isSaved ? 'active' : 'saved'
     updateIdeaStatus(id, newStatus)
     logAction(id, 'save')
+    // Toggle status in-place — card stays in For You feed either way
     setIdeas((prev) => prev.map((i) => i.id === id ? { ...i, status: newStatus } : i))
+    // Invalidate cached Saved tab so it re-fetches
+    setTabIdeas((prev) => {
+      const next = { ...prev }
+      delete next['saved']
+      return next
+    })
   }
 
   function handleDismiss(id: string) {

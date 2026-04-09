@@ -21,7 +21,7 @@ export default async function FeedPage({
       .from('trade_ideas')
       .select('*')
       .eq('user_id', user.id)
-      .eq('status', 'active')
+      .in('status', ['active', 'saved'])
       .order('created_at', { ascending: false })
       .limit(50),
     supabase

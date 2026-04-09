@@ -70,7 +70,7 @@ export function ActionButtons({
     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', position: 'relative' as const, zIndex: showFeedback ? 50 : undefined }} ref={dropdownRef}>
       {/* Save / Bookmark */}
       <button
-        style={{ ...btnStyle, color: isSaved ? '#1a1a1a' : '#9a9a9a' }}
+        style={{ ...btnStyle, color: isSaved ? '#C4342D' : '#9a9a9a' }}
         onClick={(e) => { e.stopPropagation(); onSave() }}
         title={isSaved ? 'Unsave' : 'Save'}
         aria-label="Save"

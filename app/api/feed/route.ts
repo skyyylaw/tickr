@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 
 const querySchema = z.object({
-  status: z.enum(['active', 'saved', 'dismissed']).optional().default('active'),
+  status: z.enum(['active', 'saved', 'dismissed', 'for-you']).optional().default('active'),
 })
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -23,11 +23,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const { status } = parsed.data
 
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('trade_ideas')
       .select('*')
       .eq('user_id', user.id)
-      .eq('status', status)
+
+    if (status === 'for-you') {
+      query = query.in('status', ['active', 'saved'])
+    } else {
+      query = query.eq('status', status)
+    }
+
+    const { data, error } = await query
       .order('created_at', { ascending: false })
       .limit(50)
 
