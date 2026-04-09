@@ -36,7 +36,7 @@ export default function HomePage() {
           tickr
         </h1>
         <p className="mt-4 text-lg sm:text-xl text-tickr-secondary max-w-md">
-          Your AI investment analyst
+          Investment intelligence for every investor
         </p>
         <p className="mt-3 text-[15px] text-tickr-muted max-w-lg leading-relaxed">
           Set your investment thesis. Our AI monitors the market, spots opportunities, and delivers

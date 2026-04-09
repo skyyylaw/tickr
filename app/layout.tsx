@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "tickr" }],
   openGraph: {
-    title: "tickr — Your AI Investment Analyst",
+    title: "tickr — Investment Intelligence",
     description:
       "Set your investment thesis. Our AI monitors the market and delivers personalized trade ideas with cited sources.",
     type: "website",
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "tickr — Your AI Investment Analyst",
+    title: "tickr — Investment Intelligence",
     description:
       "Set your investment thesis. Our AI monitors the market and delivers personalized trade ideas with cited sources.",
   },

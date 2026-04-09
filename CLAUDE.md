@@ -1,4 +1,4 @@
-# Tickr — AI-Native Investment Research Platform
+# Tickr — Investment Intelligence Platform
 
 ## Project Overview
 
