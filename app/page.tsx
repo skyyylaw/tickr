@@ -104,6 +104,15 @@ export default function HomePage() {
             tickr is a research tool, not a financial advisor. All trade ideas are for informational
             purposes only. Always do your own research before making investment decisions.
           </p>
+          <div className="mt-4 flex items-center justify-center gap-4 text-[11px] text-tickr-muted">
+            <Link href="/terms" className="hover:text-tickr-secondary transition-colors">
+              Terms of Service
+            </Link>
+            <span>·</span>
+            <Link href="/privacy" className="hover:text-tickr-secondary transition-colors">
+              Privacy Policy
+            </Link>
+          </div>
         </div>
       </footer>
     </div>

@@ -119,6 +119,18 @@ export default function SignupPage() {
             Sign in
           </Link>
         </p>
+
+        <p className="text-center text-[11px] text-tickr-muted leading-relaxed">
+          By signing up, you agree to our{" "}
+          <Link href="/terms" className="underline hover:text-tickr-secondary transition-colors">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="underline hover:text-tickr-secondary transition-colors">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </div>
     </div>
   );
