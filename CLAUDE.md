@@ -258,6 +258,36 @@ All external API calls go through `lib/cache/client.ts` backed by the `api_cache
 - Sources are built during data enrichment (Finnhub article URLs + Tavily result URLs), passed to LLM as numbered list, and stored in the `sources` jsonb column.
 - LLM prompts explicitly forbid fabricating URLs — only cite provided sources.
 
+## Feed Interaction Behaviors
+
+Card interactions are managed in `FeedClient.tsx` with local state; each action also fires a server-side API call. Rules:
+
+### Save (bookmark)
+- **Toggle in-place**: clicking the bookmark toggles the idea between `active` and `saved` status. The card **stays in the For You feed** either way — it does not disappear.
+- **Visual state**: bookmark icon is filled red (`#C4342D`) when saved, grey outline when not saved.
+- **Saved tab**: cached tab data is invalidated on any toggle so the Saved tab re-fetches on next visit.
+- API: `PATCH /api/ideas/[id]` with `{ status: 'saved' | 'active' }`.
+
+### Thumbs Up
+- **Toggleable**: first click sets `thumbs_up` (POST to `/api/actions`); second click undoes it (DELETE to `/api/actions`).
+- **Visual state**: icon is filled dark (`#1a1a1a`) when active, grey outline when not.
+- Setting thumbs-up on a card that has thumbs-down clears the opposite (server handles deduplication via upsert).
+
+### Thumbs Down + Feedback Dropdown
+- **First click**: opens a feedback dropdown (options: Wrong sector, Bad timing, Already holding, Too risky, Not enough upside, Other). Clicking outside closes it without action.
+- **Selecting a reason**: logs `thumbs_down` action with `feedback_reason`, then immediately dismisses the idea — fades out (300ms opacity transition) and removes from For You feed. Dismissed tab cache is invalidated.
+- **After selection**: thumbs-down icon stays filled (persisted in `feedbackMap`); clicking again is a no-op (already dismissed).
+- **Z-index layering**: `ActionButtons` wrapper gets `zIndex: 50` when dropdown is open. `FeedClient` tracks `activeFeedbackId` and gives that card's container `zIndex: 50` so the dropdown floats above adjacent cards.
+
+### Dismiss (X button)
+- Only shown in **expanded card view** (`showDismiss` prop).
+- Removes the idea from the For You feed immediately (no fade). Sets status to `dismissed`.
+
+### Expand / Collapse
+- Clicking a collapsed card calls `onExpand`; clicking the headline of an expanded card collapses it.
+- Only one card is expanded at a time (`expandedId` state).
+- Dismissing or thumbs-downing a card also collapses it if it was expanded.
+
 ## Outcome Analysis
 
 `lib/analytics/outcomes.ts` tracks idea accuracy:
