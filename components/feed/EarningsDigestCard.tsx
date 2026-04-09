@@ -17,6 +17,8 @@ const sectionLabel: React.CSSProperties = {
 interface EarningsDigestCardProps {
   idea: TradeIdeaRow
   isExpanded: boolean
+  isThumbsUp: boolean
+  isThumbsDown: boolean
   onExpand: () => void
   onCollapse: () => void
   onSave: () => void
@@ -28,6 +30,8 @@ interface EarningsDigestCardProps {
 export function EarningsDigestCard({
   idea,
   isExpanded,
+  isThumbsUp,
+  isThumbsDown,
   onExpand,
   onCollapse,
   onSave,
@@ -74,6 +78,8 @@ export function EarningsDigestCard({
                 <ActionButtons
                   ideaId={idea.id}
                   isSaved={idea.status === 'saved'}
+                  isThumbsUp={isThumbsUp}
+                  isThumbsDown={isThumbsDown}
                   onSave={onSave}
                   onThumbsUp={onThumbsUp}
                   onThumbsDown={onThumbsDown}
@@ -126,6 +132,8 @@ export function EarningsDigestCard({
           <ActionButtons
             ideaId={idea.id}
             isSaved={idea.status === 'saved'}
+            isThumbsUp={isThumbsUp}
+            isThumbsDown={isThumbsDown}
             showDismiss
             onSave={onSave}
             onDismiss={onDismiss}

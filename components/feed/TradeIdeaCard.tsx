@@ -31,6 +31,8 @@ const sectionLabel: React.CSSProperties = {
 interface TradeIdeaCardProps {
   idea: TradeIdeaRow
   isExpanded: boolean
+  isThumbsUp: boolean
+  isThumbsDown: boolean
   onExpand: () => void
   onCollapse: () => void
   onSave: () => void
@@ -42,6 +44,8 @@ interface TradeIdeaCardProps {
 export function TradeIdeaCard({
   idea,
   isExpanded,
+  isThumbsUp,
+  isThumbsDown,
   onExpand,
   onCollapse,
   onSave,
@@ -82,6 +86,8 @@ export function TradeIdeaCard({
                 <ActionButtons
                   ideaId={idea.id}
                   isSaved={idea.status === 'saved'}
+                  isThumbsUp={isThumbsUp}
+                  isThumbsDown={isThumbsDown}
                   onSave={onSave}
                   onThumbsUp={onThumbsUp}
                   onThumbsDown={onThumbsDown}
@@ -121,6 +127,8 @@ export function TradeIdeaCard({
           <ActionButtons
             ideaId={idea.id}
             isSaved={idea.status === 'saved'}
+            isThumbsUp={isThumbsUp}
+            isThumbsDown={isThumbsDown}
             showDismiss
             onSave={onSave}
             onDismiss={onDismiss}

@@ -39,5 +39,28 @@ export default async function FeedPage({
   const initialDigest: DigestRow | null =
     digestResult.status === 'fulfilled' ? (digestResult.value.data ?? null) : null
 
-  return <FeedClient initialIdeas={initialIdeas} initialDigest={initialDigest} watchlistSeeded={watchlistSeeded} />
+  // Fetch existing thumbs_up/thumbs_down actions for initial ideas
+  const initialFeedbackMap: Record<string, 'thumbs_up' | 'thumbs_down'> = {}
+  if (initialIdeas.length > 0) {
+    const ideaIds = initialIdeas.map((i) => i.id)
+    const { data: actions } = await supabase
+      .from('user_actions')
+      .select('trade_idea_id, action_type')
+      .eq('user_id', user.id)
+      .in('trade_idea_id', ideaIds)
+      .in('action_type', ['thumbs_up', 'thumbs_down'])
+
+    for (const action of actions ?? []) {
+      initialFeedbackMap[action.trade_idea_id] = action.action_type as 'thumbs_up' | 'thumbs_down'
+    }
+  }
+
+  return (
+    <FeedClient
+      initialIdeas={initialIdeas}
+      initialDigest={initialDigest}
+      initialFeedbackMap={initialFeedbackMap}
+      watchlistSeeded={watchlistSeeded}
+    />
+  )
 }

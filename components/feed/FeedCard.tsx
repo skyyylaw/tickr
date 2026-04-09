@@ -5,6 +5,8 @@ import type { TradeIdeaRow } from '@/types/Feed'
 interface FeedCardProps {
   idea: TradeIdeaRow
   isExpanded: boolean
+  isThumbsUp: boolean
+  isThumbsDown: boolean
   onExpand: () => void
   onCollapse: () => void
   onSave: () => void

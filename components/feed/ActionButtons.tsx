@@ -14,6 +14,8 @@ const FEEDBACK_OPTIONS = [
 interface ActionButtonsProps {
   ideaId: string
   isSaved: boolean
+  isThumbsUp?: boolean
+  isThumbsDown?: boolean
   showDismiss?: boolean
   onSave: () => void
   onDismiss?: () => void
@@ -23,6 +25,8 @@ interface ActionButtonsProps {
 
 export function ActionButtons({
   isSaved,
+  isThumbsUp = false,
+  isThumbsDown = false,
   showDismiss = false,
   onSave,
   onDismiss,
@@ -71,12 +75,12 @@ export function ActionButtons({
 
       {/* Thumbs Up */}
       <button
-        style={btnStyle}
+        style={{ ...btnStyle, color: isThumbsUp ? '#1a1a1a' : '#9a9a9a' }}
         onClick={(e) => { e.stopPropagation(); onThumbsUp() }}
-        title="Helpful"
+        title={isThumbsUp ? 'Remove helpful' : 'Helpful'}
         aria-label="Thumbs up"
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill={isThumbsUp ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
           <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z" />
           <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
         </svg>
@@ -84,12 +88,20 @@ export function ActionButtons({
 
       {/* Thumbs Down */}
       <button
-        style={{ ...btnStyle, color: showFeedback ? '#1a1a1a' : '#9a9a9a' }}
-        onClick={(e) => { e.stopPropagation(); setShowFeedback((v) => !v) }}
-        title="Not helpful"
+        style={{ ...btnStyle, color: (isThumbsDown || showFeedback) ? '#1a1a1a' : '#9a9a9a' }}
+        onClick={(e) => {
+          e.stopPropagation()
+          if (isThumbsDown) {
+            // Undo: call onThumbsDown with empty reason to trigger undo
+            onThumbsDown('')
+          } else {
+            setShowFeedback((v) => !v)
+          }
+        }}
+        title={isThumbsDown ? 'Remove not helpful' : 'Not helpful'}
         aria-label="Thumbs down"
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill={isThumbsDown ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
           <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z" />
           <path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
         </svg>

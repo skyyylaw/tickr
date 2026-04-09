@@ -33,7 +33,27 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     if (error) throw error
 
-    return NextResponse.json({ ideas: data ?? [] })
+    const ideas = data ?? []
+
+    // Fetch thumbs_up/thumbs_down actions for these ideas
+    const ideaIds = ideas.map((i: { id: string }) => i.id)
+    const feedbackMap: Record<string, 'thumbs_up' | 'thumbs_down'> = {}
+
+    if (ideaIds.length > 0) {
+      const { data: actions } = await supabase
+        .from('user_actions')
+        .select('trade_idea_id, action_type')
+        .eq('user_id', user.id)
+        .in('trade_idea_id', ideaIds)
+        .in('action_type', ['thumbs_up', 'thumbs_down'])
+
+      for (const action of actions ?? []) {
+        // Last one wins if duplicates exist
+        feedbackMap[action.trade_idea_id] = action.action_type as 'thumbs_up' | 'thumbs_down'
+      }
+    }
+
+    return NextResponse.json({ ideas, feedbackMap })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     return NextResponse.json({ error: message }, { status: 500 })

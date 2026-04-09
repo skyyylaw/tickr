@@ -10,13 +10,16 @@ import type { TradeIdeaRow, DigestRow } from '@/types/Feed'
 
 type Tab = 'for-you' | 'digest' | 'saved' | 'dismissed'
 
+type FeedbackMap = Record<string, 'thumbs_up' | 'thumbs_down'>
+
 interface FeedClientProps {
   initialIdeas: TradeIdeaRow[]
   initialDigest: DigestRow | null
+  initialFeedbackMap?: FeedbackMap
   watchlistSeeded?: boolean
 }
 
-export function FeedClient({ initialIdeas, initialDigest, watchlistSeeded }: FeedClientProps) {
+export function FeedClient({ initialIdeas, initialDigest, initialFeedbackMap, watchlistSeeded }: FeedClientProps) {
   const [activeTab, setActiveTab] = useState<Tab>('for-you')
   const [ideas, setIdeas] = useState<TradeIdeaRow[]>(initialIdeas)
   const [tabIdeas, setTabIdeas] = useState<Partial<Record<Tab, TradeIdeaRow[]>>>({})
@@ -24,6 +27,7 @@ export function FeedClient({ initialIdeas, initialDigest, watchlistSeeded }: Fee
   const [generating, setGenerating] = useState(false)
   const [loadingTab, setLoadingTab] = useState(false)
   const [showSeededToast, setShowSeededToast] = useState(watchlistSeeded ?? false)
+  const [feedbackMap, setFeedbackMap] = useState<FeedbackMap>(initialFeedbackMap ?? {})
 
   // Viewport time tracking
   const entryTimes = useRef<Map<string, number>>(new Map())
@@ -71,6 +75,9 @@ export function FeedClient({ initialIdeas, initialDigest, watchlistSeeded }: Fee
       if (res.ok) {
         const data = await res.json()
         setIdeas(data.ideas ?? [])
+        if (data.feedbackMap) {
+          setFeedbackMap((prev) => ({ ...prev, ...data.feedbackMap }))
+        }
       }
     } catch {}
   }, [])
@@ -109,6 +116,9 @@ export function FeedClient({ initialIdeas, initialDigest, watchlistSeeded }: Fee
           if (res.ok) {
             const data = await res.json()
             setTabIdeas((prev) => ({ ...prev, [tab]: data.ideas ?? [] }))
+            if (data.feedbackMap) {
+              setFeedbackMap((prev) => ({ ...prev, ...data.feedbackMap }))
+            }
           }
         } catch {}
         setLoadingTab(false)
@@ -162,11 +172,45 @@ export function FeedClient({ initialIdeas, initialDigest, watchlistSeeded }: Fee
   }
 
   function handleThumbsUp(id: string) {
-    logAction(id, 'thumbs_up')
+    const current = feedbackMap[id]
+    if (current === 'thumbs_up') {
+      // Undo: remove the action
+      setFeedbackMap((prev) => {
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
+      fetch('/api/actions', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action_type: 'thumbs_up', trade_idea_id: id }),
+      }).catch(() => {})
+    } else {
+      // Set thumbs_up (POST will also clear any opposite)
+      setFeedbackMap((prev) => ({ ...prev, [id]: 'thumbs_up' }))
+      logAction(id, 'thumbs_up')
+    }
   }
 
   function handleThumbsDown(id: string, reason: string) {
-    logAction(id, 'thumbs_down', { feedback_reason: reason })
+    const current = feedbackMap[id]
+    if (current === 'thumbs_down') {
+      // Undo: remove the action
+      setFeedbackMap((prev) => {
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
+      fetch('/api/actions', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action_type: 'thumbs_down', trade_idea_id: id }),
+      }).catch(() => {})
+    } else {
+      // Set thumbs_down (POST will also clear any opposite)
+      setFeedbackMap((prev) => ({ ...prev, [id]: 'thumbs_down' }))
+      logAction(id, 'thumbs_down', { feedback_reason: reason })
+    }
   }
 
   function handleExpand(id: string) {
@@ -203,6 +247,8 @@ export function FeedClient({ initialIdeas, initialDigest, watchlistSeeded }: Fee
         <FeedCard
           idea={idea}
           isExpanded={expandedId === idea.id}
+          isThumbsUp={feedbackMap[idea.id] === 'thumbs_up'}
+          isThumbsDown={feedbackMap[idea.id] === 'thumbs_down'}
           onExpand={() => handleExpand(idea.id)}
           onCollapse={handleCollapse}
           onSave={() => handleSave(idea.id)}
