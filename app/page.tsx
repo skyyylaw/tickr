@@ -11,7 +11,7 @@ export default function HomePage() {
         >
           tickr
         </span>
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
           <Link
             href="/login"
             className="text-[13px] text-tickr-secondary hover:text-tickr-text transition-colors"
