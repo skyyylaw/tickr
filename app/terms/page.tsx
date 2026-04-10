@@ -23,7 +23,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-[15px] font-semibold text-tickr-text mb-2">1. Acceptance of Terms</h2>
             <p>
-              By accessing or using tickr ("the Service"), you agree to be bound by these Terms of
+              By accessing or using tickr (&quot;the Service&quot;), you agree to be bound by these Terms of
               Service. If you do not agree, do not use the Service. You must be at least 18 years old
               to create an account.
             </p>
