@@ -29,13 +29,13 @@ export function TopNav({ activeTab, onTabChange }: TopNavProps) {
         padding: '0 16px',
       }}
     >
-      {/* Top row: centered logo with right-anchored links */}
+      {/* Top row: left-aligned logo on mobile, centered on md+ */}
       <div
+        className="justify-start md:justify-center"
         style={{
           position: 'relative' as const,
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
           padding: '16px 0 0 0',
         }}
       >
