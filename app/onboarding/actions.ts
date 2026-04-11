@@ -20,7 +20,7 @@ export async function saveThesis(data: WizardData): Promise<void> {
   // Snapshot current profile before overwriting (for thesis history)
   const { data: currentProfile } = await supabase
     .from('user_profiles')
-    .select('investment_goals, time_horizon, risk_tolerance, capital_range, sectors, industries, strategy_preferences, check_frequency, experience_level, interested_tickers, constraints')
+    .select('investment_goals, time_horizon, risk_tolerance, capital_range, sectors, industries, strategy_preferences, check_frequency, experience_level, interested_tickers, constraints, custom_thesis')
     .eq('id', user.id)
     .single()
 
@@ -36,6 +36,7 @@ export async function saveThesis(data: WizardData): Promise<void> {
     experience_level: data.experience_level,
     interested_tickers: data.interested_tickers,
     constraints: data.constraints,
+    custom_thesis: data.custom_thesis?.trim() || null,
   }
 
   const { error } = await supabase

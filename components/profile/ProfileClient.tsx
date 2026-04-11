@@ -95,6 +95,7 @@ interface ProfileData {
   experience_level: string | null
   interested_tickers: string[]
   constraints: string[]
+  custom_thesis: string | null
   created_at: string
   updated_at: string
 }
@@ -124,7 +125,7 @@ interface ProfileClientProps {
 type EditableField =
   | 'investment_goals' | 'time_horizon' | 'risk_tolerance' | 'capital_range'
   | 'sectors' | 'industries' | 'strategy_preferences' | 'check_frequency'
-  | 'experience_level' | 'interested_tickers' | 'constraints'
+  | 'experience_level' | 'interested_tickers' | 'constraints' | 'custom_thesis'
 
 const FIELD_LABELS: Record<EditableField, string> = {
   investment_goals: 'Investment Goals',
@@ -138,6 +139,7 @@ const FIELD_LABELS: Record<EditableField, string> = {
   experience_level: 'Experience Level',
   interested_tickers: 'Tickers',
   constraints: 'Constraints',
+  custom_thesis: 'Custom Thesis',
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -300,6 +302,10 @@ export function ProfileClient({ profile, email, stats, history }: ProfileClientP
         return <span className="text-[13px] text-tickr-text">{(val as string) || 'Not set'}</span>
       case 'check_frequency':
         return <span className="text-[13px] text-tickr-text">{FREQUENCY_LABELS[val as string] || val || 'Not set'}</span>
+      case 'custom_thesis':
+        return (val && (val as string).trim())
+          ? <span className="text-[13px] text-tickr-text leading-relaxed whitespace-pre-wrap">{val as string}</span>
+          : <span className="text-tickr-muted text-[13px]">Not set</span>
       default:
         return <span className="text-[13px] text-tickr-text">{String(val) || 'Not set'}</span>
     }
@@ -329,6 +335,24 @@ export function ProfileClient({ profile, email, stats, history }: ProfileClientP
         return <ChipSelect options={CAPITAL_RANGE_OPTIONS} selected={editValue ? [editValue as string] : []} onChange={(v) => setEditValue(v[v.length - 1] ?? '')} singleSelect />
       case 'check_frequency':
         return <ChipSelect options={FREQUENCY_OPTIONS} selected={editValue ? [editValue as string] : []} onChange={(v) => setEditValue(v[v.length - 1] ?? '')} labels={FREQUENCY_LABELS} singleSelect />
+      case 'custom_thesis': {
+        const textValue = (editValue as string | null) ?? ''
+        return (
+          <div>
+            <textarea
+              value={textValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              maxLength={2000}
+              rows={6}
+              placeholder="e.g. I'm long reshoring trends and founder-led tech. Avoid highly-levered retail."
+              className="w-full px-3 py-2 bg-tickr-bg border border-tickr-border rounded-[10px] text-[13px] text-tickr-text placeholder:text-tickr-muted focus:outline-none focus:border-tickr-secondary transition-colors resize-none leading-relaxed"
+            />
+            <div className="text-[11px] text-tickr-muted mt-1 text-right tabular-nums">
+              {textValue.length} / 2000
+            </div>
+          </div>
+        )
+      }
       default:
         return null
     }
@@ -359,7 +383,7 @@ export function ProfileClient({ profile, email, stats, history }: ProfileClientP
   const thesisFields: EditableField[] = [
     'investment_goals', 'time_horizon', 'risk_tolerance', 'capital_range',
     'sectors', 'industries', 'strategy_preferences', 'check_frequency',
-    'experience_level', 'interested_tickers', 'constraints',
+    'experience_level', 'interested_tickers', 'constraints', 'custom_thesis',
   ]
 
   return (

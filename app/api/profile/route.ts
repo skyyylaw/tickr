@@ -15,6 +15,16 @@ const updateSchema = z.object({
   experience_level: z.string().optional(),
   interested_tickers: z.array(z.string()).optional(),
   constraints: z.array(z.string()).optional(),
+  custom_thesis: z
+    .string()
+    .max(2000)
+    .nullable()
+    .optional()
+    .transform((v) => {
+      if (v === null || v === undefined) return v
+      const trimmed = v.trim()
+      return trimmed.length === 0 ? null : trimmed
+    }),
 })
 
 export async function GET(): Promise<NextResponse> {

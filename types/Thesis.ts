@@ -10,6 +10,7 @@ export interface WizardData {
   experience_level: string
   interested_tickers: string[]
   constraints: string[]
+  custom_thesis?: string
 }
 
 export interface TickerResult {

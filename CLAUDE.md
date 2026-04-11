@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Tickr is a web app that captures a user's investment thesis (goals, risk profile, sectors, strategy) and uses an AI agent to monitor market events, generate thesis-aligned trade ideas, and present them as a concise TL;DR feed. No trade execution — research and recommendations only.
+Tickr is a web app that captures a user's investment thesis (goals, risk profile, sectors, strategy, plus a free-text custom thesis in their own words) and uses an AI agent to monitor market events, generate thesis-aligned trade ideas, and present them as a concise TL;DR feed. No trade execution — research and recommendations only.
 
 ## Product Scope
 
@@ -56,7 +56,7 @@ Migrations in `/supabase/migrations/`. Tables:
 
 | Table | Purpose |
 |---|---|
-| `user_profiles` | 1:1 with auth.users. Stores thesis: goals, risk tolerance (1-10), time horizon, sectors, industries, strategies, tickers, experience level, constraints. Auto-created on signup via trigger. |
+| `user_profiles` | 1:1 with auth.users. Stores thesis: goals, risk tolerance (1-10), time horizon, sectors, industries, strategies, tickers, experience level, constraints, and `custom_thesis` (optional free-text field, up to 2000 chars, for nonrigid NLP context threaded into every LLM prompt). Auto-created on signup via trigger. |
 | `watchlist_items` | User's tracked tickers. Fields: ticker, notes, added_at. |
 | `positions` | Manually logged trades. Fields: ticker, shares, entry_price, entry_date, notes. |
 | `trade_ideas` | AI-generated ideas + earnings digests. card_type='trade_idea' or 'earnings_digest'. Fields: ticker, direction (buy/sell/hold), headline, event_summary, reasoning (jsonb), risks (jsonb), sources (jsonb), confidence_score, time_horizon, status (active/dismissed/saved/expired), extra_data (jsonb for earnings digest fields). |
@@ -133,7 +133,7 @@ components/
   digest/
     DigestView.tsx                      — Daily briefing display
   onboarding/
-    OnboardingWizard.tsx                — Multi-step thesis capture wizard
+    OnboardingWizard.tsx                — 13-step thesis capture wizard (ends with a free-text "custom thesis" textarea)
     CardSelect.tsx                      — Card-based multi-select
     ChipSelect.tsx                      — Chip-based multi-select
     RiskSlider.tsx                      — Risk tolerance slider (1-10)
@@ -180,7 +180,7 @@ types/
   Feed.ts                               — Feed item types, DigestRow, Source
   Finnhub.ts                            — Raw Finnhub API types + normalized app types (Quote, CompanyProfile, NewsArticle, etc.)
   Tavily.ts                             — TavilySearchResult, TavilySearchResponse, TavilySearchOptions
-  Thesis.ts                             — WizardData (onboarding form shape)
+  Thesis.ts                             — WizardData (onboarding form shape, includes optional custom_thesis free-text field)
   Watchlist.ts                          — WatchlistItem, Position types
 ```
 
@@ -193,6 +193,8 @@ types/
 5. **Data Enrichment** (`dataEnricher.ts`): Per ticker group, fetch quote, company profile, 30-day candles, and Tavily search results in parallel. Compute momentum metrics (week/month change, relative volume, distance from highs/lows). Build deduped source list.
 6. **Idea Generation** (`ideaGenerator.ts`): Pass enriched ticker group + thesis to Claude. Prompt requires plain-English metrics (never raw numbers), cited sources, and `has_idea: false` if no actionable signal. Validates JSON response schema.
 7. **Logging**: Store agent_run (full audit) + trade_idea in database.
+
+The thesis snapshot passed to the LLM is formatted by `formatThesis()` in `lib/agent/prompts.ts` — the single chokepoint for every prompt builder (trade idea, ticker group, earnings digest, daily digest). Structured fields come first, then the optional free-text `custom_thesis` is appended verbatim as "Additional context from investor (in their own words): …" when non-empty. This gives the agent unstructured NLP context without touching relevance scoring (which remains keyword-based in `eventDetector.ts`).
 
 ## Earnings Digest Pipeline
 

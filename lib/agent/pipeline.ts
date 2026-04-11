@@ -19,6 +19,7 @@ interface DBUserProfile {
   experience_level: string
   interested_tickers: string[]
   constraints: string[]
+  custom_thesis: string | null
 }
 
 function toWizardData(row: DBUserProfile): WizardData {
@@ -34,6 +35,7 @@ function toWizardData(row: DBUserProfile): WizardData {
     experience_level: row.experience_level || '',
     interested_tickers: row.interested_tickers || [],
     constraints: row.constraints || [],
+    custom_thesis: row.custom_thesis || undefined,
   }
 }
 

@@ -92,6 +92,9 @@ function formatThesis(profile: WizardData): string {
   if (profile.constraints.length > 0) {
     lines.push(`Constraints: ${profile.constraints.join(', ')}`)
   }
+  if (profile.custom_thesis && profile.custom_thesis.trim()) {
+    lines.push(`Additional context from investor (in their own words): ${profile.custom_thesis.trim()}`)
+  }
   return lines.join('\n')
 }
 

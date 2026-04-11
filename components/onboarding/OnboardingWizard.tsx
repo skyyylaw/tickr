@@ -267,12 +267,34 @@ function buildSteps(data: WizardData, updateData: UpdateDataFn): StepConfig[] {
         />
       ),
     },
+    {
+      title: 'Anything else we should know?',
+      subtitle:
+        'Share your personal take in your own words — themes you\'re watching, stories you believe in, things to avoid. Our research agent will keep this in mind.',
+      optional: true,
+      isValid: () => true,
+      component: (
+        <div className="mt-6">
+          <textarea
+            value={data.custom_thesis ?? ''}
+            onChange={(e) => updateData('custom_thesis', e.target.value)}
+            maxLength={2000}
+            rows={6}
+            placeholder="e.g. I'm long reshoring trends and founder-led tech. Avoid highly-levered retail."
+            className="w-full px-4 py-3 bg-tickr-surface border border-tickr-border rounded-[10px] text-[13px] text-tickr-text placeholder:text-tickr-muted focus:outline-none focus:border-tickr-secondary transition-colors resize-none leading-relaxed"
+          />
+          <div className="text-[11px] text-tickr-muted mt-2 text-right tabular-nums">
+            {(data.custom_thesis ?? '').length} / 2000
+          </div>
+        </div>
+      ),
+    },
   ]
 }
 
 // ─── Main wizard ──────────────────────────────────────────────────────────────
 
-const TOTAL_STEPS = 12
+const TOTAL_STEPS = 13
 
 export function OnboardingWizard() {
   const [currentStep, setCurrentStep] = useState(0)
@@ -292,6 +314,7 @@ export function OnboardingWizard() {
     experience_level: '',
     interested_tickers: [],
     constraints: [],
+    custom_thesis: '',
   })
 
   function updateData<K extends keyof WizardData>(key: K, value: WizardData[K]) {

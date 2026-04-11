@@ -4,6 +4,16 @@ AI-native investment research platform. Set your investment thesis, and tickr's 
 
 **US stocks only (NYSE + NASDAQ). Research and recommendations only — no trade execution.**
 
+## Features
+
+- **Guided thesis capture** — a 13-step onboarding wizard collects goals, risk tolerance, sectors, industries, strategies, constraints, and tickers.
+- **Custom thesis in your own words** — the final onboarding step is a free-text box where you tell tickr anything else it should know (themes you're watching, stories you believe in, what to avoid). This context is threaded verbatim into every LLM call, so trade ideas and digests reflect your actual thinking — not just checkboxes. You can edit it anytime from your Profile.
+- **For You feed** — AI-generated trade ideas as scannable TL;DR cards with cited sources.
+- **Earnings digests** — plain-English summaries of earnings reports for tickers on your watchlist.
+- **Daily briefing** — a conversational morning digest of what matters for your thesis.
+- **Watchlist + positions** — track tickers and log manual trades for outcome analysis.
+- **Thesis evolution** — every edit to your thesis is logged so you can see how your thinking has changed.
+
 ## Tech Stack
 
 - **Framework:** Next.js 14 (App Router) + TypeScript
@@ -45,9 +55,11 @@ Open [http://localhost:3000](http://localhost:3000).
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous/public key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only, used by the agent pipeline and cron jobs) |
 | `ANTHROPIC_API_KEY` | Anthropic API key (for Claude) |
 | `FINNHUB_API_KEY` | Finnhub API key (market data + news) |
 | `TAVILY_API_KEY` | Tavily API key (web search for enrichment) |
+| `CRON_SECRET` | Bearer token that authenticates Vercel cron route calls |
 
 ### Scripts
 
@@ -92,10 +104,12 @@ npm run lint      # Run ESLint
 
 | Schedule | Endpoint | Purpose |
 |---|---|---|
-| Every 6h | `/api/cron/generate-ideas` | Generate trade ideas for all users |
-| Daily 12pm UTC | `/api/cron/generate-digests` | Generate daily digest briefings |
-| Daily 6pm UTC | `/api/cron/price-snapshots` | Snapshot watchlist prices |
-| Every 6h (+30m) | `/api/cron/cache-cleanup` | Clean expired API cache entries |
+| Daily 6 AM UTC | `/api/cron/price-snapshots` | Snapshot watchlist prices for outcome tracking |
+| Daily 11 AM UTC / 7 AM ET | `/api/cron/generate-digests` | Generate daily digest briefings |
+| Daily 12 PM UTC / 8 AM ET | `/api/cron/generate-ideas` | Run the agent pipeline for all users |
+| Daily midnight UTC | `/api/cron/cache-cleanup` | Purge expired `api_cache` rows |
+
+All cron endpoints authenticate via the `CRON_SECRET` Bearer token.
 
 ## Deployment
 
