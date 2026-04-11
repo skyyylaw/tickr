@@ -274,11 +274,11 @@ export function WatchlistClient({ initialItems }: WatchlistClientProps) {
         }}
       >
         <div
+          className="justify-start md:justify-center"
           style={{
             position: 'relative',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
             padding: '16px 0 14px 0',
           }}
         >
