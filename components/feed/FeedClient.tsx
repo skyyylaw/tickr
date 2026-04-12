@@ -25,6 +25,7 @@ export function FeedClient({ initialIdeas, initialDigest, initialFeedbackMap, wa
   const [tabIdeas, setTabIdeas] = useState<Partial<Record<Tab, TradeIdeaRow[]>>>({})
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
+  const [statusLoaded, setStatusLoaded] = useState(false)
   const [loadingTab, setLoadingTab] = useState(false)
   const [showSeededToast, setShowSeededToast] = useState(watchlistSeeded ?? false)
   const [feedbackMap, setFeedbackMap] = useState<FeedbackMap>(initialFeedbackMap ?? {})
@@ -105,6 +106,45 @@ export function FeedClient({ initialIdeas, initialDigest, initialFeedbackMap, wa
     return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [refreshActive])
 
+  // ── Check generation status on mount + poll while running ──────────
+  useEffect(() => {
+    let cancelled = false
+
+    async function checkStatus() {
+      try {
+        const res = await fetch('/api/agent/status')
+        if (res.ok && !cancelled) {
+          const data = await res.json()
+          setGenerating(data.status === 'running')
+          setStatusLoaded(true)
+        }
+      } catch {}
+    }
+
+    checkStatus()
+
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    if (!generating || !statusLoaded) return
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/agent/status')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.status === 'idle') {
+            setGenerating(false)
+            refreshActive()
+          }
+        }
+      } catch {}
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [generating, statusLoaded, refreshActive])
+
   // ── Tab switching ──────────────────────────────────────────────────
   async function handleTabChange(tab: Tab) {
     setActiveTab(tab)
@@ -135,9 +175,16 @@ export function FeedClient({ initialIdeas, initialDigest, initialFeedbackMap, wa
       const res = await fetch('/api/agent/run', { method: 'POST' })
       if (res.ok) {
         await refreshActive()
+        setGenerating(false)
+      } else if (res.status === 429) {
+        // Already running or rate limited — keep generating state,
+        // polling will pick up when it completes
+      } else {
+        setGenerating(false)
       }
-    } catch {}
-    setGenerating(false)
+    } catch {
+      setGenerating(false)
+    }
   }
 
   // ── Card actions ───────────────────────────────────────────────────
