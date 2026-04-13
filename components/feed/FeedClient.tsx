@@ -31,6 +31,8 @@ export function FeedClient({ initialIdeas, initialDigest, initialFeedbackMap, wa
   const [feedbackMap, setFeedbackMap] = useState<FeedbackMap>(initialFeedbackMap ?? {})
   const [fadingIds, setFadingIds] = useState<Set<string>>(new Set())
   const [activeFeedbackId, setActiveFeedbackId] = useState<string | null>(null)
+  const [showRateLimitToast, setShowRateLimitToast] = useState(false)
+  const rateLimitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Viewport time tracking
   const entryTimes = useRef<Map<string, number>>(new Map())
@@ -177,8 +179,10 @@ export function FeedClient({ initialIdeas, initialDigest, initialFeedbackMap, wa
         await refreshActive()
         setGenerating(false)
       } else if (res.status === 429) {
-        // Already running or rate limited — keep generating state,
-        // polling will pick up when it completes
+        setGenerating(false)
+        setShowRateLimitToast(true)
+        if (rateLimitTimerRef.current) clearTimeout(rateLimitTimerRef.current)
+        rateLimitTimerRef.current = setTimeout(() => setShowRateLimitToast(false), 5000)
       } else {
         setGenerating(false)
       }
@@ -377,6 +381,52 @@ export function FeedClient({ initialIdeas, initialDigest, initialFeedbackMap, wa
               background: 'transparent',
               border: 'none',
               color: 'rgba(255,255,255,0.6)',
+              fontSize: '16px',
+              cursor: 'pointer',
+              padding: '0 2px',
+              lineHeight: 1,
+              flexShrink: 0,
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* Rate limit toast */}
+      {showRateLimitToast && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 100,
+            maxWidth: '480px',
+            width: 'calc(100% - 40px)',
+            padding: '14px 18px',
+            background: '#FEF2F2',
+            color: '#991B1B',
+            fontSize: '13px',
+            lineHeight: '1.5',
+            borderRadius: '12px',
+            border: '1px solid #FECACA',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+          }}
+        >
+          <span style={{ flex: 1 }}>
+            Too many attempts. Please wait a few minutes.
+          </span>
+          <button
+            onClick={() => setShowRateLimitToast(false)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#991B1B',
+              opacity: 0.5,
               fontSize: '16px',
               cursor: 'pointer',
               padding: '0 2px',
