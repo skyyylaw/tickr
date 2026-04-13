@@ -77,40 +77,20 @@ function extractPrimaryTicker(article: NewsArticle): string[] {
     .filter((t) => t.length > 0)
 }
 
-// Common words that look like tickers but aren't — false positives get filtered
-// by relevance scoring anyway, so this list just cuts obvious noise.
-const FALSE_POSITIVE_TICKERS = new Set([
-  'THE', 'AND', 'FOR', 'NOT', 'ARE', 'BUT', 'ALL', 'CAN', 'HER', 'WAS',
-  'ONE', 'OUR', 'OUT', 'ITS', 'HIS', 'HOW', 'HAS', 'HAD', 'WHO', 'OIL',
-  'OLD', 'NEW', 'NOW', 'WAY', 'MAY', 'DAY', 'TOO', 'ANY', 'CEO', 'CFO',
-  'IPO', 'ETF', 'SEC', 'GDP', 'CPI', 'FED', 'FDA', 'EPS', 'SAY', 'SET',
-  'BIG', 'TOP', 'LOW', 'SEE', 'TWO', 'OWN', 'USE', 'RUN', 'GET', 'LET',
-  'GOT', 'YET', 'DID', 'BUY', 'CUT', 'ADD', 'AGO', 'END', 'FAR', 'FEW',
-  'LOT', 'NET', 'PER', 'TEN', 'WON', 'YES', 'HIGH', 'ALSO', 'JUST',
-  'THAN', 'THAT', 'THIS', 'WILL', 'WITH', 'FROM', 'HAVE', 'BEEN', 'MORE',
-  'SAID', 'EACH', 'OVER', 'SUCH', 'WHEN', 'WHAT', 'YOUR', 'INTO', 'THEM',
-  'MAKE', 'LIKE', 'LONG', 'LOOK', 'MANY', 'SOME', 'THEN', 'VERY', 'AFTER',
-  'YEAR', 'ALSO', 'BACK', 'GOOD', 'GIVE', 'MOST', 'ONLY', 'TELL', 'VERY',
-  'EVEN', 'LAST', 'NEXT', 'STILL', 'COULD', 'WOULD', 'ABOUT', 'THESE',
-  'OTHER', 'THEIR', 'THERE', 'FIRST', 'STOCK', 'SHARE',
-])
-
-function extractTickersFromText(text: string): string[] {
-  const matches = text.match(/\b[A-Z]{2,5}\b/g) || []
-  return Array.from(new Set(matches)).filter((t) => !FALSE_POSITIVE_TICKERS.has(t))
-}
-
 async function fetchThesisDrivenArticles(
   customThesis: string | undefined
 ): Promise<NewsArticle[]> {
   if (!customThesis || !customThesis.trim()) return []
 
-  const queries = await extractThesisQueries(customThesis)
+  const { queries, tickers } = await extractThesisQueries(customThesis)
   if (queries.length === 0) return []
 
   console.log(
     `[agent:thesisSearcher] Running ${queries.length} Tavily searches: ${queries.join(' | ')}`
   )
+  if (tickers.length > 0) {
+    console.log(`[agent:thesisSearcher] LLM-provided tickers: ${tickers.join(', ')}`)
+  }
 
   const searchPromises = queries.map((query) =>
     tavilySearch(query, { maxResults: 5 }).catch((err) => {
@@ -120,12 +100,12 @@ async function fetchThesisDrivenArticles(
   )
 
   const results = await Promise.all(searchPromises)
+  const tickerString = tickers.join(',')
   const articles: NewsArticle[] = []
   let syntheticId = -1
 
   for (const searchResults of results) {
     for (const result of searchResults) {
-      const tickers = extractTickersFromText(`${result.title} ${result.content}`)
       articles.push({
         id: syntheticId--,
         headline: result.title,
@@ -135,7 +115,7 @@ async function fetchThesisDrivenArticles(
         image: '',
         datetime: Math.floor(Date.now() / 1000),
         category: '',
-        related: tickers.join(','),
+        related: tickerString,
       })
     }
   }

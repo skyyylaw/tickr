@@ -1,8 +1,17 @@
 import { getQuote, getCompanyProfile, getCandles } from '@/lib/finnhub/client'
 import { search as tavilySearch } from '@/lib/tavily/client'
-import type { Candles, Quote } from '@/types/Finnhub'
+import type { Candles, Quote, CompanyProfile } from '@/types/Finnhub'
 import type { WizardData } from '@/types/Thesis'
 import type { DetectedEvent, EnrichedEvent, EnrichedTickerGroup, TickerEventGroup, TickerMetrics, Source } from '@/types/Agent'
+
+/** Finnhub returns zeroed/null fields for unknown tickers — treat as no data. */
+function isValidQuote(quote: Quote | null): quote is Quote {
+  return quote !== null && typeof quote.price === 'number' && quote.price > 0
+}
+
+function isValidProfile(profile: CompanyProfile | null): profile is CompanyProfile {
+  return profile !== null && !!profile.name
+}
 
 function computeTickerMetrics(
   candles: Candles | null,
@@ -113,8 +122,10 @@ export async function enrichEventData(
     tavilySearch(searchQuery, { maxResults: 5 }),
   ])
 
-  const quote = results[0].status === 'fulfilled' ? results[0].value : null
-  const profile = results[1].status === 'fulfilled' ? results[1].value : null
+  const rawQuote = results[0].status === 'fulfilled' ? results[0].value : null
+  const rawProfile = results[1].status === 'fulfilled' ? results[1].value : null
+  const quote = isValidQuote(rawQuote) ? rawQuote : null
+  const profile = isValidProfile(rawProfile) ? rawProfile : null
   const tavilyResults = results[3].status === 'fulfilled' ? results[3].value : []
 
   if (results[0].status === 'rejected') console.error(`[agent] Quote fetch failed for ${ticker}:`, results[0].reason)
@@ -210,8 +221,10 @@ export async function enrichTickerGroup(
     tavilySearch(searchQuery.slice(0, 400), { maxResults: 5 }),
   ])
 
-  const quote = results[0].status === 'fulfilled' ? results[0].value : null
-  const profile = results[1].status === 'fulfilled' ? results[1].value : null
+  const rawQuote = results[0].status === 'fulfilled' ? results[0].value : null
+  const rawProfile = results[1].status === 'fulfilled' ? results[1].value : null
+  const quote = isValidQuote(rawQuote) ? rawQuote : null
+  const profile = isValidProfile(rawProfile) ? rawProfile : null
   const tavilyResults = results[3].status === 'fulfilled' ? results[3].value : []
 
   if (results[0].status === 'rejected') console.error(`[agent] Quote fetch failed for ${ticker}:`, results[0].reason)

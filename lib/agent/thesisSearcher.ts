@@ -7,20 +7,25 @@ import { createHash } from 'crypto'
 const LLM_MODEL = 'claude-sonnet-4-20250514'
 
 const SYSTEM_PROMPT =
-  "You extract investment search queries from a user's investment thesis. Given the thesis text, return a JSON array of search queries that would find relevant current market news, events, and stock movements for the themes mentioned. Each query should be specific enough for a news search. Return only the raw JSON array with no markdown formatting, no code fences, no explanation. Generate as many queries as the thesis warrants, up to a maximum of 6."
+  "You extract investment search queries and relevant stock tickers from a user's investment thesis. Given the thesis text, return a JSON object with two fields: \"queries\" (an array of search queries that would find relevant current market news, events, and stock movements for the themes mentioned, each specific enough for a news search, up to 6) and \"tickers\" (an array of real US-listed stock ticker symbols relevant to the thesis themes — only actual NYSE/NASDAQ ticker symbols, not abbreviations or acronyms that aren't real tickers). Return only the raw JSON object with no markdown formatting, no code fences, no explanation."
 
-export async function extractThesisQueries(customThesis: string): Promise<string[]> {
+export interface ThesisSearchResult {
+  queries: string[]
+  tickers: string[]
+}
+
+export async function extractThesisQueries(customThesis: string): Promise<ThesisSearchResult> {
   if (!customThesis || !customThesis.trim()) {
-    return []
+    return { queries: [], tickers: [] }
   }
 
   const thesis = customThesis.trim()
   const hash = createHash('md5').update(thesis).digest('hex')
   const cacheKey = `thesis-queries:${hash}`
 
-  const cached = await cache.get<string[]>(cacheKey)
-  if (cached !== null) {
-    console.log(`[agent:thesisSearcher] Cache hit for thesis queries (${cached.length} queries)`)
+  const cached = await cache.get<ThesisSearchResult>(cacheKey)
+  if (cached !== null && Array.isArray(cached.queries)) {
+    console.log(`[agent:thesisSearcher] Cache hit for thesis queries (${cached.queries.length} queries, ${cached.tickers.length} tickers)`)
     return cached
   }
 
@@ -29,34 +34,38 @@ export async function extractThesisQueries(customThesis: string): Promise<string
 
     const response = await client.messages.create({
       model: LLM_MODEL,
-      max_tokens: 200,
+      max_tokens: 300,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: thesis }],
     })
 
     const textBlock = response.content.find((block) => block.type === 'text')
     if (!textBlock || textBlock.type !== 'text') {
-      return []
+      return { queries: [], tickers: [] }
     }
 
-    const queries: unknown = extractJson(textBlock.text)
-    if (!Array.isArray(queries)) {
-      return []
+    const parsed = extractJson(textBlock.text) as Record<string, unknown>
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.queries)) {
+      return { queries: [], tickers: [] }
     }
 
-    const validated = queries.filter(
+    const queries = parsed.queries.filter(
       (q): q is string => typeof q === 'string' && q.trim().length > 0
     )
+    const tickers = (Array.isArray(parsed.tickers) ? parsed.tickers : []).filter(
+      (t): t is string => typeof t === 'string' && /^[A-Z]{1,5}$/.test(t.trim())
+    ).map((t) => t.trim())
 
-    await cache.set(cacheKey, validated, 'thesis-searcher', THESIS_QUERIES_TTL)
-    console.log(`[agent:thesisSearcher] Extracted ${validated.length} queries from custom thesis`)
+    const result: ThesisSearchResult = { queries, tickers }
+    await cache.set(cacheKey, result, 'thesis-searcher', THESIS_QUERIES_TTL)
+    console.log(`[agent:thesisSearcher] Extracted ${queries.length} queries and ${tickers.length} tickers from custom thesis`)
 
-    return validated
+    return result
   } catch (err) {
     console.error(
       '[agent:thesisSearcher] Failed to extract thesis queries:',
       err instanceof Error ? err.message : err
     )
-    return []
+    return { queries: [], tickers: [] }
   }
 }
