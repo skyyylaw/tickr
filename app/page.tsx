@@ -58,6 +58,12 @@ export default function HomePage() {
         >
           Get started — it&apos;s free
         </Link>
+        <Link
+          href="/demo"
+          className="mt-3 px-8 py-3 bg-transparent border border-tickr-border rounded-[10px] text-[14px] font-medium text-tickr-secondary hover:text-tickr-text hover:border-tickr-text transition-colors"
+        >
+          See it in action
+        </Link>
       </section>
 
       {/* How it works */}
