@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getServiceClient } from '@/lib/supabase/service'
 import { runAgentPipeline } from '@/lib/agent/pipeline'
 
+export const maxDuration = 300
+
 const RATE_LIMIT_MS = 5 * 60 * 1000
 const STALE_THRESHOLD_MS = 10 * 60 * 1000
 

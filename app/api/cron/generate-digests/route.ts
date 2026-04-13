@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyCronSecret } from '@/lib/cron/auth'
 import { getServiceClient } from '@/lib/supabase/service'
 import { generateDailyDigest } from '@/lib/agent/digestGenerator'
+
 import type { WizardData } from '@/types/Thesis'
 
 interface DBUserProfile {

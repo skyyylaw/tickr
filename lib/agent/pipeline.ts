@@ -60,6 +60,23 @@ export async function runAgentPipeline(userId: string): Promise<PipelineResult> 
 
   const userProfile = toWizardData(profileRow as DBUserProfile)
 
+  // Merge watchlist tickers into interested_tickers so the pipeline monitors all tracked stocks
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: watchlistRows } = await (supabase as any)
+    .from('watchlist_items')
+    .select('ticker')
+    .eq('user_id', userId) as { data: { ticker: string }[] | null }
+
+  if (watchlistRows && watchlistRows.length > 0) {
+    const existingSet = new Set(userProfile.interested_tickers.map((t) => t.toUpperCase()))
+    for (const row of watchlistRows) {
+      if (!existingSet.has(row.ticker.toUpperCase())) {
+        userProfile.interested_tickers.push(row.ticker)
+        existingSet.add(row.ticker.toUpperCase())
+      }
+    }
+  }
+
   if (userProfile.sectors.length === 0 && userProfile.interested_tickers.length === 0) {
     return {
       tradeIdeas: [],
