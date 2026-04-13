@@ -22,6 +22,16 @@ interface DBUserProfile {
   custom_thesis: string | null
 }
 
+function normalizeUrl(url: string): string {
+  try {
+    const parsed = new URL(url)
+    // Strip query params and trailing slashes
+    return `${parsed.origin}${parsed.pathname}`.replace(/\/+$/, '')
+  } catch {
+    return url.replace(/\/+$/, '')
+  }
+}
+
 function toWizardData(row: DBUserProfile): WizardData {
   return {
     investment_goals: row.investment_goals || [],
@@ -107,6 +117,39 @@ export async function runAgentPipeline(userId: string): Promise<PipelineResult> 
       for (const group of tickerGroups) {
         try {
           const enriched = await enrichTickerGroup(group, userProfile)
+
+          // Source-level dedup: skip LLM if ≥70% of current sources were already cited in recent ideas
+          const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: recentIdeas } = await (supabase as any)
+            .from('trade_ideas')
+            .select('sources')
+            .eq('user_id', userId)
+            .eq('ticker', enriched.ticker)
+            .in('status', ['active', 'saved'])
+            .gte('created_at', fortyEightHoursAgo) as { data: { sources: { url: string }[] | null }[] | null }
+
+          const currentSourceUrls = enriched.sources.map((s) => normalizeUrl(s.url))
+          const existingSourceUrls = new Set<string>()
+          if (recentIdeas) {
+            for (const idea of recentIdeas) {
+              if (Array.isArray(idea.sources)) {
+                for (const src of idea.sources) {
+                  if (src.url) existingSourceUrls.add(normalizeUrl(src.url))
+                }
+              }
+            }
+          }
+
+          if (currentSourceUrls.length > 0 && existingSourceUrls.size > 0) {
+            const matchingCount = currentSourceUrls.filter((url) => existingSourceUrls.has(url)).length
+            const overlapPct = matchingCount / currentSourceUrls.length
+            if (overlapPct >= 0.7) {
+              console.log(`[agent] Source dedup: skipping ${enriched.ticker} — ${(overlapPct * 100).toFixed(0)}% overlap (${matchingCount}/${currentSourceUrls.length} sources already cited in recent ideas)`)
+              continue
+            }
+          }
+
           const result = await generateTradeIdeaForTickerGroup(enriched, userProfile, userId)
 
           if (!result) {
@@ -115,25 +158,6 @@ export async function runAgentPipeline(userId: string): Promise<PipelineResult> 
           }
 
           const { idea, metadata } = result
-
-          // Layer 2: Post-generation dedup — skip if same ticker+direction exists within 24h
-          const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { data: duplicateCheck } = await (supabase as any)
-            .from('trade_ideas')
-            .select('id')
-            .eq('user_id', userId)
-            .eq('ticker', idea.ticker)
-            .eq('direction', idea.direction)
-            .in('status', ['active', 'saved'])
-            .gte('created_at', twentyFourHoursAgo)
-            .limit(1) as { data: { id: string }[] | null }
-
-          if (duplicateCheck && duplicateCheck.length > 0) {
-            console.log(`[agent] Dedup: skipping ${idea.ticker} ${idea.direction} — duplicate exists from last 24h (${duplicateCheck[0].id})`)
-            continue
-          }
-
           const pipelineStartTime = Date.now()
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
