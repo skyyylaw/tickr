@@ -1,5 +1,8 @@
 import { getCompanyNews, getMarketNews } from '@/lib/finnhub/client'
+import { search as tavilySearch } from '@/lib/tavily/client'
+import { extractThesisQueries } from './thesisSearcher'
 import type { NewsArticle } from '@/types/Finnhub'
+import type { TavilySearchResult } from '@/types/Tavily'
 import type { WizardData } from '@/types/Thesis'
 import type { DetectedEvent, TickerEventGroup } from '@/types/Agent'
 
@@ -69,6 +72,75 @@ function extractPrimaryTicker(article: NewsArticle): string[] {
     .filter((t) => t.length > 0)
 }
 
+// Common words that look like tickers but aren't — false positives get filtered
+// by relevance scoring anyway, so this list just cuts obvious noise.
+const FALSE_POSITIVE_TICKERS = new Set([
+  'THE', 'AND', 'FOR', 'NOT', 'ARE', 'BUT', 'ALL', 'CAN', 'HER', 'WAS',
+  'ONE', 'OUR', 'OUT', 'ITS', 'HIS', 'HOW', 'HAS', 'HAD', 'WHO', 'OIL',
+  'OLD', 'NEW', 'NOW', 'WAY', 'MAY', 'DAY', 'TOO', 'ANY', 'CEO', 'CFO',
+  'IPO', 'ETF', 'SEC', 'GDP', 'CPI', 'FED', 'FDA', 'EPS', 'SAY', 'SET',
+  'BIG', 'TOP', 'LOW', 'SEE', 'TWO', 'OWN', 'USE', 'RUN', 'GET', 'LET',
+  'GOT', 'YET', 'DID', 'BUY', 'CUT', 'ADD', 'AGO', 'END', 'FAR', 'FEW',
+  'LOT', 'NET', 'PER', 'TEN', 'WON', 'YES', 'HIGH', 'ALSO', 'JUST',
+  'THAN', 'THAT', 'THIS', 'WILL', 'WITH', 'FROM', 'HAVE', 'BEEN', 'MORE',
+  'SAID', 'EACH', 'OVER', 'SUCH', 'WHEN', 'WHAT', 'YOUR', 'INTO', 'THEM',
+  'MAKE', 'LIKE', 'LONG', 'LOOK', 'MANY', 'SOME', 'THEN', 'VERY', 'AFTER',
+  'YEAR', 'ALSO', 'BACK', 'GOOD', 'GIVE', 'MOST', 'ONLY', 'TELL', 'VERY',
+  'EVEN', 'LAST', 'NEXT', 'STILL', 'COULD', 'WOULD', 'ABOUT', 'THESE',
+  'OTHER', 'THEIR', 'THERE', 'FIRST', 'STOCK', 'SHARE',
+])
+
+function extractTickersFromText(text: string): string[] {
+  const matches = text.match(/\b[A-Z]{2,5}\b/g) || []
+  return Array.from(new Set(matches)).filter((t) => !FALSE_POSITIVE_TICKERS.has(t))
+}
+
+async function fetchThesisDrivenArticles(
+  customThesis: string | undefined
+): Promise<NewsArticle[]> {
+  if (!customThesis || !customThesis.trim()) return []
+
+  const queries = await extractThesisQueries(customThesis)
+  if (queries.length === 0) return []
+
+  console.log(
+    `[agent:thesisSearcher] Running ${queries.length} Tavily searches: ${queries.join(' | ')}`
+  )
+
+  const searchPromises = queries.map((query) =>
+    tavilySearch(query, { maxResults: 5 }).catch((err) => {
+      console.error(`[agent:thesisSearcher] Tavily search failed for "${query}":`, err)
+      return [] as TavilySearchResult[]
+    })
+  )
+
+  const results = await Promise.all(searchPromises)
+  const articles: NewsArticle[] = []
+  let syntheticId = -1
+
+  for (const searchResults of results) {
+    for (const result of searchResults) {
+      const tickers = extractTickersFromText(`${result.title} ${result.content}`)
+      articles.push({
+        id: syntheticId--,
+        headline: result.title,
+        summary: result.content.slice(0, 500),
+        source: 'Tavily',
+        url: result.url,
+        image: '',
+        datetime: Math.floor(Date.now() / 1000),
+        category: '',
+        related: tickers.join(','),
+      })
+    }
+  }
+
+  console.log(
+    `[agent:thesisSearcher] Thesis-driven articles added to pool: ${articles.length}`
+  )
+  return articles
+}
+
 export async function detectRelevantEvents(userProfile: WizardData): Promise<DetectedEvent[]> {
   const today = new Date()
   const twoDaysAgo = new Date(Date.now() - 2 * 86400_000)
@@ -93,18 +165,29 @@ export async function detectRelevantEvents(userProfile: WizardData): Promise<Det
     getMarketNews('merger').catch(() => [] as NewsArticle[])
   )
 
-  const allResults = await Promise.all(fetchPromises)
-  const allArticles = allResults.flat()
+  // Run Finnhub fetches and thesis-driven Tavily searches in parallel
+  const [finnhubResults, thesisArticles] = await Promise.all([
+    Promise.all(fetchPromises),
+    fetchThesisDrivenArticles(userProfile.custom_thesis),
+  ])
 
-  console.log(`[agent:eventDetector] Raw articles fetched from Finnhub: ${allArticles.length}`)
+  const allArticles = finnhubResults.flat()
+  const finnhubCount = allArticles.length
+  allArticles.push(...thesisArticles)
 
-  const seen = new Set<number>()
+  console.log(
+    `[agent:eventDetector] Raw articles fetched: ${finnhubCount} Finnhub + ${thesisArticles.length} thesis-driven`
+  )
+
+  // Dedup by both Finnhub article ID and URL (catches cross-source duplicates)
+  const seenIds = new Set<number>()
+  const seenUrls = new Set<string>()
   const unique: NewsArticle[] = []
   for (const article of allArticles) {
-    if (!seen.has(article.id)) {
-      seen.add(article.id)
-      unique.push(article)
-    }
+    if (seenIds.has(article.id) || seenUrls.has(article.url)) continue
+    seenIds.add(article.id)
+    if (article.url) seenUrls.add(article.url)
+    unique.push(article)
   }
 
   console.log(`[agent:eventDetector] Unique articles after dedup: ${unique.length}`)
