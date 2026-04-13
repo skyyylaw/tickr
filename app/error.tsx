@@ -15,11 +15,16 @@ export default function Error({
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-tickr-bg px-4">
-      <span
-        className="font-serif italic font-bold text-[22px] text-tickr-text mb-8"
-        style={{ letterSpacing: "-0.02em" }}
-      >
-        tickr
+      <span className="mb-8">
+        <span
+          className="font-serif italic font-bold text-[22px] text-tickr-text"
+          style={{ letterSpacing: "-0.02em" }}
+        >
+          tickr
+        </span>
+        <span className="font-serif italic text-[9px] text-tickr-muted" style={{ fontWeight: 400, marginLeft: "2px", position: "relative", top: "5px" }}>
+          by sky
+        </span>
       </span>
       <h1 className="text-4xl font-mono font-bold text-tickr-text">500</h1>
       <p className="mt-3 text-[15px] text-tickr-secondary">

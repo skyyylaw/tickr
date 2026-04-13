@@ -37,7 +37,12 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-tickr-bg px-4">
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-serif italic tracking-tight text-tickr-text">tickr</h1>
+          <div>
+            <h1 className="text-3xl font-serif italic tracking-tight text-tickr-text inline">tickr</h1>
+            <span className="font-serif italic text-[9px] text-tickr-muted" style={{ fontWeight: 400, marginLeft: "2px", position: "relative", top: "5px" }}>
+              by sky
+            </span>
+          </div>
           <p className="mt-2 text-sm text-tickr-secondary">
             Sign in to your account
           </p>

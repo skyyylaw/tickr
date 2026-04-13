@@ -357,11 +357,16 @@ export function OnboardingWizard() {
     <div className="min-h-screen bg-tickr-bg flex flex-col items-center justify-center px-4 py-12">
       {/* Logo */}
       <div className="mb-10">
-        <span
-          className="font-serif italic font-bold text-[22px] text-tickr-text"
-          style={{ letterSpacing: '-0.02em' }}
-        >
-          tickr
+        <span>
+          <span
+            className="font-serif italic font-bold text-[22px] text-tickr-text"
+            style={{ letterSpacing: '-0.02em' }}
+          >
+            tickr
+          </span>
+          <span className="font-serif italic text-[9px] text-tickr-muted" style={{ fontWeight: 400, marginLeft: '2px', position: 'relative' as const, top: '5px' }}>
+            by sky
+          </span>
         </span>
       </div>
 

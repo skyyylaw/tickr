@@ -44,17 +44,22 @@ export function TopNav({ activeTab, onTabChange }: TopNavProps) {
           style={{ textDecoration: 'none' }}
           onClick={() => onTabChange('for-you')}
         >
-          <span
-            style={{
-              fontFamily: "'Noto Serif', Georgia, serif",
-              fontStyle: 'italic',
-              fontWeight: 700,
-              fontSize: '22px',
-              color: '#1a1a1a',
-              letterSpacing: '-0.02em',
-            }}
-          >
-            tickr
+          <span>
+            <span
+              style={{
+                fontFamily: "'Noto Serif', Georgia, serif",
+                fontStyle: 'italic',
+                fontWeight: 700,
+                fontSize: '22px',
+                color: '#1a1a1a',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              tickr
+            </span>
+            <span style={{ fontFamily: "'Noto Serif', Georgia, serif", fontStyle: 'italic', fontSize: '9px', color: '#9a9a9a', fontWeight: 400, marginLeft: '2px', position: 'relative' as const, top: '5px' }}>
+              by sky
+            </span>
           </span>
         </Link>
         <div

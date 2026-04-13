@@ -7,10 +7,17 @@ export default function TermsPage() {
       <header className="flex items-center justify-between px-6 sm:px-10 py-5 max-w-3xl mx-auto">
         <Link
           href="/"
-          className="font-serif italic font-bold text-[22px] text-tickr-text hover:opacity-80 transition-opacity"
-          style={{ letterSpacing: "-0.02em" }}
+          className="no-underline hover:opacity-80 transition-opacity"
         >
-          tickr
+          <span
+            className="font-serif italic font-bold text-[22px] text-tickr-text"
+            style={{ letterSpacing: "-0.02em" }}
+          >
+            tickr
+          </span>
+          <span className="font-serif italic text-[9px] text-tickr-muted" style={{ fontWeight: 400, marginLeft: "2px", position: "relative", top: "5px" }}>
+            by sky
+          </span>
         </Link>
       </header>
 

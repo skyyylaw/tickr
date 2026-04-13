@@ -392,8 +392,13 @@ export function ProfileClient({ profile, email, stats, history }: ProfileClientP
       <div className="sticky top-0 z-40 bg-tickr-surface" style={{ borderBottom: '1px solid #E8E8E8', padding: '0 16px' }}>
         <div className="relative flex items-center justify-start md:justify-center" style={{ padding: '16px 0 14px 0' }}>
           <Link href="/feed" className="no-underline">
-            <span className="font-serif italic font-bold text-[22px] text-tickr-text" style={{ letterSpacing: '-0.02em' }}>
-              tickr
+            <span>
+              <span className="font-serif italic font-bold text-[22px] text-tickr-text" style={{ letterSpacing: '-0.02em' }}>
+                tickr
+              </span>
+              <span className="font-serif italic text-[9px] text-tickr-muted" style={{ fontWeight: 400, marginLeft: '2px', position: 'relative' as const, top: '5px' }}>
+                by sky
+              </span>
             </span>
           </Link>
           <div className="absolute right-0 flex gap-4 items-center">

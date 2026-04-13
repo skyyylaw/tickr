@@ -5,11 +5,16 @@ export default function HomePage() {
     <div className="min-h-screen bg-white text-tickr-text">
       {/* Nav */}
       <header className="flex items-center justify-between px-6 sm:px-10 py-5 max-w-5xl mx-auto">
-        <span
-          className="font-serif italic font-bold text-[22px] text-tickr-text"
-          style={{ letterSpacing: "-0.02em" }}
-        >
-          tickr
+        <span>
+          <span
+            className="font-serif italic font-bold text-[22px] text-tickr-text"
+            style={{ letterSpacing: "-0.02em" }}
+          >
+            tickr
+          </span>
+          <span className="font-serif italic text-[9px] text-tickr-muted" style={{ fontWeight: 400, marginLeft: "2px", position: "relative", top: "5px" }}>
+            by sky
+          </span>
         </span>
         <div className="flex items-center gap-3">
           <Link
@@ -29,12 +34,17 @@ export default function HomePage() {
 
       {/* Hero */}
       <section className="flex flex-col items-center text-center px-6 pt-20 sm:pt-32 pb-16 sm:pb-24">
-        <h1
-          className="font-serif italic font-bold text-tickr-text text-4xl sm:text-5xl md:text-6xl leading-tight"
-          style={{ letterSpacing: "-0.02em" }}
-        >
-          tickr
-        </h1>
+        <div className="inline-block">
+          <h1
+            className="font-serif italic font-bold text-tickr-text text-4xl sm:text-5xl md:text-6xl leading-tight inline"
+            style={{ letterSpacing: "-0.02em" }}
+          >
+            tickr
+          </h1>
+          <span className="font-serif italic text-[12px] sm:text-[14px] text-tickr-muted inline" style={{ fontWeight: 400, marginLeft: "3px", position: "relative", top: "10px" }}>
+            by sky
+          </span>
+        </div>
         <p className="mt-4 text-lg sm:text-xl text-tickr-secondary max-w-md">
           Investment intelligence for every investor
         </p>
@@ -94,11 +104,16 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="border-t border-tickr-border px-6 py-8">
         <div className="max-w-3xl mx-auto text-center">
-          <span
-            className="font-serif italic font-bold text-[16px] text-tickr-muted"
-            style={{ letterSpacing: "-0.02em" }}
-          >
-            tickr
+          <span>
+            <span
+              className="font-serif italic font-bold text-[16px] text-tickr-muted"
+              style={{ letterSpacing: "-0.02em" }}
+            >
+              tickr
+            </span>
+            <span className="font-serif italic text-[7px] text-tickr-muted" style={{ fontWeight: 400, marginLeft: "2px", position: "relative", top: "4px" }}>
+              by sky
+            </span>
           </span>
           <p className="mt-3 text-[11px] text-tickr-muted leading-relaxed max-w-md mx-auto">
             tickr is a research tool, not a financial advisor. All trade ideas are for informational
