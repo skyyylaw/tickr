@@ -1,7 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { TRADE_IDEA_SYSTEM_PROMPT, buildTradeIdeaUserPrompt, buildTickerGroupUserPrompt } from './prompts'
+import type { ExistingIdea } from './prompts'
 import type { EnrichedEvent, EnrichedTickerGroup, TradeIdeaLLMResponse, TradeIdeaResult } from '@/types/Agent'
 import type { WizardData } from '@/types/Thesis'
+import { getServiceClient } from '@/lib/supabase/service'
 
 const LLM_MODEL = 'claude-sonnet-4-20250514'
 
@@ -69,11 +71,25 @@ export async function generateTradeIdea(
 
 export async function generateTradeIdeaForTickerGroup(
   enrichedGroup: EnrichedTickerGroup,
-  userProfile: WizardData
+  userProfile: WizardData,
+  userId: string
 ): Promise<TradeIdeaResult | null> {
   const client = new Anthropic()
 
-  const userPrompt = buildTickerGroupUserPrompt(enrichedGroup, userProfile)
+  // Fetch recent active ideas for this ticker to avoid duplicates
+  const supabase = getServiceClient()
+  const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: recentIdeas } = await (supabase as any)
+    .from('trade_ideas')
+    .select('headline, direction')
+    .eq('user_id', userId)
+    .eq('ticker', enrichedGroup.ticker)
+    .in('status', ['active', 'saved'])
+    .gte('created_at', fortyEightHoursAgo) as { data: ExistingIdea[] | null }
+
+  const userPrompt = buildTickerGroupUserPrompt(enrichedGroup, userProfile, recentIdeas ?? undefined)
   return callLLMForIdea(client, userPrompt)
 }
 

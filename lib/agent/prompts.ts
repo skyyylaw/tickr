@@ -152,7 +152,16 @@ export function buildTradeIdeaUserPrompt(enriched: EnrichedEvent, userProfile: W
   return sections.join('\n\n')
 }
 
-export function buildTickerGroupUserPrompt(enriched: EnrichedTickerGroup, userProfile: WizardData): string {
+export interface ExistingIdea {
+  headline: string
+  direction: string
+}
+
+export function buildTickerGroupUserPrompt(
+  enriched: EnrichedTickerGroup,
+  userProfile: WizardData,
+  existingIdeas?: ExistingIdea[]
+): string {
   const sections: string[] = []
 
   sections.push(`## Your Investor Profile\n${formatThesis(userProfile)}`)
@@ -167,6 +176,11 @@ export function buildTickerGroupUserPrompt(enriched: EnrichedTickerGroup, userPr
 
   if (enriched.events.length > 1) {
     sections.push(`IMPORTANT: You have multiple events for ${enriched.ticker}. Weigh all bullish and bearish signals against each other and produce ONE directional call (buy, sell, or hold). Do NOT ignore conflicting signals — acknowledge them in your reasoning.`)
+  }
+
+  if (existingIdeas && existingIdeas.length > 0) {
+    const ideaLines = existingIdeas.map((i) => `- [${i.direction.toUpperCase()}] ${i.headline}`)
+    sections.push(`## EXISTING IDEAS (do not repeat):\n${ideaLines.join('\n')}\n\nYou must not generate an idea that covers the same thesis or signal as the above. If there is no genuinely new and distinct signal for this ticker, return has_idea: false.`)
   }
 
   if (enriched.quote || enriched.profile || enriched.metrics) {

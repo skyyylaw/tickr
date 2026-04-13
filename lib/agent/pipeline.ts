@@ -107,7 +107,7 @@ export async function runAgentPipeline(userId: string): Promise<PipelineResult> 
       for (const group of tickerGroups) {
         try {
           const enriched = await enrichTickerGroup(group, userProfile)
-          const result = await generateTradeIdeaForTickerGroup(enriched, userProfile)
+          const result = await generateTradeIdeaForTickerGroup(enriched, userProfile, userId)
 
           if (!result) {
             console.log(`[agent] No trade idea generated for ${group.ticker} (${group.events.length} events)`)
@@ -115,6 +115,25 @@ export async function runAgentPipeline(userId: string): Promise<PipelineResult> 
           }
 
           const { idea, metadata } = result
+
+          // Layer 2: Post-generation dedup — skip if same ticker+direction exists within 24h
+          const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: duplicateCheck } = await (supabase as any)
+            .from('trade_ideas')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('ticker', idea.ticker)
+            .eq('direction', idea.direction)
+            .in('status', ['active', 'saved'])
+            .gte('created_at', twentyFourHoursAgo)
+            .limit(1) as { data: { id: string }[] | null }
+
+          if (duplicateCheck && duplicateCheck.length > 0) {
+            console.log(`[agent] Dedup: skipping ${idea.ticker} ${idea.direction} — duplicate exists from last 24h (${duplicateCheck[0].id})`)
+            continue
+          }
+
           const pipelineStartTime = Date.now()
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
