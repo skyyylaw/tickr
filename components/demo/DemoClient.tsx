@@ -233,6 +233,7 @@ export function DemoClient() {
     if (generateTimerRef.current) clearTimeout(generateTimerRef.current)
     generateTimerRef.current = setTimeout(() => {
       dispatch({ type: 'GENERATE_COMPLETE' })
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     }, 2000)
   }, [])
 

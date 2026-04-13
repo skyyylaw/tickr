@@ -98,11 +98,20 @@ export const DEMO_STEPS: DemoStep[] = [
   {
     id: 'generate',
     title: 'Generate new ideas',
-    body: 'Hit the button to run the AI agent. It scans news, earnings, and prices against your thesis.',
+    body: 'Whenever you want fresh ideas, hit generate.',
     type: 'action',
     view: 'feed',
     spotlightTarget: 'demo-generate-btn',
     awaitAction: 'generate',
+    instructionPosition: 'below',
+  },
+  {
+    id: 'generate-review',
+    title: 'Fresh ideas, just for you',
+    body: 'Fresh ideas based on the latest market events, filtered through your thesis.',
+    type: 'info',
+    view: 'feed',
+    spotlightTarget: 'demo-card-0',
     instructionPosition: 'below',
   },
   {
