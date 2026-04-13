@@ -14,6 +14,11 @@ function scoreArticle(article: NewsArticle, profile: WizardData): { score: numbe
   let score = 0
   let reason = ''
 
+  if (article.source === 'Tavily') {
+    score += 0.4
+    reason = 'thesis-driven search'
+  }
+
   const relatedTickers = article.related
     ? article.related.split(',').map((t) => t.trim().toUpperCase())
     : []
@@ -23,7 +28,7 @@ function scoreArticle(article: NewsArticle, profile: WizardData): { score: numbe
   )
   if (watchlistMatch) {
     score += 0.4
-    reason = 'watchlist ticker match'
+    if (!reason) reason = 'watchlist ticker match'
   }
 
   const textToSearch = `${article.headline} ${article.summary}`.toLowerCase()

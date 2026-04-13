@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { extractJson } from './extractJson'
 import * as cache from '@/lib/cache/client'
 import { THESIS_QUERIES_TTL } from '@/lib/cache/ttl'
 import { createHash } from 'crypto'
@@ -6,7 +7,7 @@ import { createHash } from 'crypto'
 const LLM_MODEL = 'claude-sonnet-4-20250514'
 
 const SYSTEM_PROMPT =
-  "You extract investment search queries from a user's investment thesis. Given the thesis text, return a JSON array of search queries that would find relevant current market news, events, and stock movements for the themes mentioned. Each query should be specific enough for a news search. Return only the JSON array, nothing else. Generate as many queries as the thesis warrants, up to a maximum of 6."
+  "You extract investment search queries from a user's investment thesis. Given the thesis text, return a JSON array of search queries that would find relevant current market news, events, and stock movements for the themes mentioned. Each query should be specific enough for a news search. Return only the raw JSON array with no markdown formatting, no code fences, no explanation. Generate as many queries as the thesis warrants, up to a maximum of 6."
 
 export async function extractThesisQueries(customThesis: string): Promise<string[]> {
   if (!customThesis || !customThesis.trim()) {
@@ -38,7 +39,7 @@ export async function extractThesisQueries(customThesis: string): Promise<string
       return []
     }
 
-    const queries: unknown = JSON.parse(textBlock.text)
+    const queries: unknown = extractJson(textBlock.text)
     if (!Array.isArray(queries)) {
       return []
     }

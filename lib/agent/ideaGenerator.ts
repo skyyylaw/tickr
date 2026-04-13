@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { extractJson } from './extractJson'
 import { TRADE_IDEA_SYSTEM_PROMPT, buildTradeIdeaUserPrompt, buildTickerGroupUserPrompt } from './prompts'
 import type { ExistingIdea } from './prompts'
 import type { EnrichedEvent, EnrichedTickerGroup, TradeIdeaLLMResponse, TradeIdeaResult } from '@/types/Agent'
@@ -6,22 +7,6 @@ import type { WizardData } from '@/types/Thesis'
 import { getServiceClient } from '@/lib/supabase/service'
 
 const LLM_MODEL = 'claude-sonnet-4-20250514'
-
-function extractJson(text: string): unknown {
-  try {
-    return JSON.parse(text)
-  } catch {
-    const fenceMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/)
-    if (fenceMatch) {
-      return JSON.parse(fenceMatch[1])
-    }
-    const braceMatch = text.match(/\{[\s\S]*\}/)
-    if (braceMatch) {
-      return JSON.parse(braceMatch[0])
-    }
-    throw new Error('Could not extract valid JSON from LLM response')
-  }
-}
 
 function validateResponse(parsed: unknown): TradeIdeaLLMResponse {
   const obj = parsed as Record<string, unknown>
