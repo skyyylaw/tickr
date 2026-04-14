@@ -2,6 +2,7 @@ import { getServiceClient } from '@/lib/supabase/service'
 import { detectRelevantEvents, groupEventsByTicker } from './eventDetector'
 import { enrichTickerGroup } from './dataEnricher'
 import { generateTradeIdeaForTickerGroup } from './ideaGenerator'
+import { deduplicateSources } from './sourceDedup'
 import { checkAndGenerateEarningsDigests } from './earningsTrigger'
 import type { WizardData } from '@/types/Thesis'
 import type { PipelineResult } from '@/types/Agent'
@@ -205,7 +206,7 @@ export async function runAgentPipeline(userId: string): Promise<PipelineResult> 
               reasoning: idea.reasoning,
               risks: idea.risks,
               watch_for: idea.watch_for,
-              sources: idea.sources,
+              sources: deduplicateSources(idea.sources),
               confidence_score: idea.confidence,
               time_horizon: idea.time_horizon,
               triggering_event: group.events.map((e) => e.headline).join(' | '),

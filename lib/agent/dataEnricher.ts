@@ -3,6 +3,7 @@ import { search as tavilySearch } from '@/lib/tavily/client'
 import { publisherFromUrl } from '@/lib/tavily/publisherMap'
 import type { Candles, Quote, CompanyProfile } from '@/types/Finnhub'
 import type { WizardData } from '@/types/Thesis'
+import { deduplicateSources } from './sourceDedup'
 import type { DetectedEvent, EnrichedEvent, EnrichedTickerGroup, TickerEventGroup, TickerMetrics, Source } from '@/types/Agent'
 
 /** Finnhub returns zeroed/null fields for unknown tickers — treat as no data. */
@@ -146,7 +147,7 @@ export async function enrichEventData(
       console.error(`[agent] Candles fetch failed for ${ticker}:`, reason)
     }
   }
-  const sources = buildSources(event, tavilyResults)
+  const sources = deduplicateSources(buildSources(event, tavilyResults))
 
   return {
     event,
@@ -244,7 +245,7 @@ export async function enrichTickerGroup(
     }
   }
 
-  const sources = buildGroupSources(events, tavilyResults)
+  const sources = deduplicateSources(buildGroupSources(events, tavilyResults))
 
   return {
     ticker,
