@@ -88,6 +88,9 @@ tickr/
 │   ├── (auth)/                   # Auth route group (no layout nesting)
 │   │   ├── login/page.tsx        # Login form (client component)
 │   │   └── signup/page.tsx       # Signup form (client component)
+│   ├── demo/page.tsx             # Interactive demo walkthrough (public, no auth)
+│   ├── terms/page.tsx            # Terms of Service (public)
+│   ├── privacy/page.tsx          # Privacy Policy (public)
 │   ├── (dashboard)/              # Protected route group
 │   │   ├── feed/page.tsx         # Trade ideas feed (SSR + client hydration)
 │   │   ├── watchlist/page.tsx    # Watchlist management (SSR + client)
@@ -124,22 +127,24 @@ tickr/
 │   ├── Analytics.tsx
 │   ├── feed/                     # Feed components (10 files)
 │   ├── digest/                   # Digest components (1 file)
+│   ├── demo/                     # Demo walkthrough components (7 files)
 │   ├── onboarding/               # Onboarding components (6 files)
 │   ├── profile/                  # Profile components (1 file)
 │   └── watchlist/                # Watchlist components (1 file)
 ├── lib/                          # Server-side libraries
-│   ├── agent/                    # AI agent pipeline (7 files)
+│   ├── agent/                    # AI agent pipeline (11 files)
 │   ├── analytics/                # Outcome analysis (1 file)
 │   ├── cache/                    # API cache layer (2 files)
 │   ├── cron/                     # Cron auth (1 file)
 │   ├── data/                     # Static data mappings (1 file)
 │   ├── finnhub/                  # Finnhub client + rate limiter (2 files)
 │   ├── supabase/                 # Supabase clients (4 files)
-│   ├── tavily/                   # Tavily client (1 file)
+│   ├── tavily/                   # Tavily client + publisher mapping (2 files)
+│   ├── demo/                     # Demo walkthrough data + types (3 files)
 │   └── parseCitations.tsx        # Citation marker → link conversion
 ├── types/                        # TypeScript type definitions (6 files)
 ├── supabase/
-│   └── migrations/               # SQL migrations (5 files)
+│   └── migrations/               # SQL migrations (6 files)
 ├── design/
 │   └── wireframes.jsx            # Visual mockups
 ├── public/                       # Static assets
@@ -434,6 +439,8 @@ All tables are in the `public` schema. Migrations are in `/supabase/migrations/`
 | `created_at` | `timestamptz` | NOT NULL | `now()` | Cache entry creation time |
 
 **RLS:** No user-facing policies. Accessed exclusively via service role client. The `ENABLE ROW LEVEL SECURITY` is set but no policies are created for regular users.
+
+**Check Constraint:** `cache_key` must start with one of the allowed source prefixes: `finnhub:`, `tavily:`, or `thesis-queries:`. The `thesis-queries:` prefix was added via migration `006_cache_source_thesis_searcher.sql`.
 
 **Index:** `idx_api_cache_key` on `(cache_key)`, `idx_api_cache_expires` on `(expires_at)`.
 
@@ -884,32 +891,54 @@ Pipelines 1 and 2 run in parallel via `Promise.allSettled()` in the main orchest
      processEarnings(thesis, watchlistTickers, userId)
    ])
    ```
-5. For each successful trade idea result:
+5. **Source overlap dedup**: Before calling the LLM for each ticker group, the orchestrator checks source URL overlap against the user's recent active trade ideas (last 48 hours, same ticker). If ≥70% of the current sources were already cited in a recent idea, LLM generation is skipped entirely for that ticker — the signal isn't new.
+6. For each successful trade idea result:
+   - The LLM-returned sources are passed through `deduplicateSources()` one more time before DB insertion, catching any duplicates the LLM may have echoed back.
    - Insert `agent_runs` row with full audit data (thesis snapshot, queries, LLM prompt/response, model, latency, tokens).
    - Insert `trade_ideas` row with the generated idea content.
-6. Return `PipelineResult` with counts and details.
+7. Return `PipelineResult` with counts and details.
 
 ### Trade Ideas Pipeline (detailed steps)
+
+#### Step 0: Thesis-Driven Search (`lib/agent/thesisSearcher.ts`)
+
+**Function:** `extractThesisQueries(customThesis: string): Promise<{ queries: string[], tickers: string[] }>`
+
+When the user has a non-empty `custom_thesis`, the pipeline makes a lightweight LLM call before event detection to extract actionable search queries from the free-text thesis.
+
+**Process:**
+1. Check `api_cache` for key `thesis-queries:<md5(customThesis)>` (24-hour TTL). Return cached result if found.
+2. Call Claude (`claude-sonnet-4-20250514`, `max_tokens: 200`) with a focused prompt: extract up to 6 web search queries and any relevant US stock tickers mentioned or implied by the thesis text.
+3. Parse the JSON response (`{ queries: string[], tickers: string[] }`).
+4. Cache the result in `api_cache` with key prefix `thesis-queries:` and 24-hour TTL.
+5. Run each extracted query through Tavily search in parallel.
+6. The resulting articles are added to the event pool in `eventDetector.ts` alongside Finnhub articles. Thesis-driven articles receive a +0.4 relevance boost so they are not filtered out by the scoring threshold.
+7. LLM-provided tickers are merged into the watchlist tickers for company news fetching.
+
+If `custom_thesis` is empty, this step is skipped entirely.
 
 #### Step 1: Event Detection (`lib/agent/eventDetector.ts`)
 
 **Function:** `detectEvents(watchlistTickers: string[], thesis: WizardData): Promise<TickerEventGroup[]>`
 
 **Process:**
-1. **Fetch company news**: For each watchlist ticker, call `finnhub.getCompanyNews(ticker, fromDate, toDate)` where date range is past 3 days. All calls run in parallel.
-2. **Fetch market news**: Call `finnhub.getMarketNews('general')` and `finnhub.getMarketNews('merger')` in parallel.
-3. **Dedup**: Combine all articles, dedup by Finnhub article `id`.
-4. **Relevance scoring**: Score each article against the user's thesis:
+1. **Thesis-driven search**: If user has `custom_thesis`, run `extractThesisQueries()` to get additional search queries and tickers (see Step 0). Merge LLM-provided tickers into the watchlist tickers set.
+2. **Fetch company news**: For each watchlist ticker (including thesis-derived tickers), call `finnhub.getCompanyNews(ticker, fromDate, toDate)` where date range is past 3 days. All calls run in parallel.
+3. **Fetch market news**: Call `finnhub.getMarketNews('general')` and `finnhub.getMarketNews('merger')` in parallel.
+4. **Thesis search results**: Run extracted thesis queries through Tavily in parallel. Add resulting articles to the event pool with a `thesis-searcher` source tag and +0.4 relevance boost.
+5. **Dedup**: Combine all articles, dedup by Finnhub article `id`.
+6. **Relevance scoring**: Score each article against the user's thesis:
    - Watchlist ticker match: +0.4 (if article's `related` field matches a watchlist ticker)
+   - Thesis-driven article: +0.4 (if article came from thesis search queries)
    - Sector match: +0.3 (if article headline/summary mentions user's sectors)
    - Industry match: +0.2 (if article mentions user's industries)
    - Strategy keyword match: +0.2 (if article mentions keywords related to user's strategies, e.g., "momentum", "earnings beat")
    - Recency: +0.1 (if published within last 24 hours)
    - Maximum possible score: 1.2
-5. **Auto-tuning threshold**: Start with threshold 0.15. If fewer than 3 articles pass, lower threshold by 0.05 steps until at least 3 pass or threshold reaches 0.05 minimum. This ensures the pipeline always has enough signal to work with.
-6. **Primary ticker assignment**: Each passing article is assigned a primary ticker — either from its `related` field (if matching a watchlist ticker) or extracted from the headline.
-7. **Grouping**: Group articles by primary ticker via `groupEventsByTicker()`. Each group contains all articles for one ticker.
-8. **Cap and sort**: Sort groups by maximum article relevance score (descending). Cap at 10 ticker groups.
+7. **Auto-tuning threshold**: Start with threshold 0.15. If fewer than 3 articles pass, lower threshold by 0.05 steps until at least 3 pass or threshold reaches 0.05 minimum. This ensures the pipeline always has enough signal to work with.
+8. **Primary ticker assignment**: Each passing article is assigned a primary ticker — either from its `related` field (if matching a watchlist ticker) or extracted from the headline.
+9. **Grouping**: Group articles by primary ticker via `groupEventsByTicker()`. Each group contains all articles for one ticker.
+10. **Cap and sort**: Sort groups by maximum article relevance score (descending). Cap at 10 ticker groups.
 
 **Output:** Array of `TickerEventGroup` objects, each containing a ticker and its associated `DetectedEvent[]`.
 
@@ -931,10 +960,14 @@ From the 30-day candle data, computes:
 - `percentFrom52wLow`: Distance from lowest price in candle data.
 - `relativeVolume`: Current volume / average volume ratio.
 
+**Null Safety:** Handles null responses from Finnhub gracefully — null quote, null profile, null candles. Metric computation is skipped when candle data is missing. The pipeline continues with available data instead of crashing.
+
 **Source List:**
 Builds a deduped array of `Source` objects (title + URL) from:
 - Finnhub news articles (from the event group)
 - Tavily search results
+
+After assembly, the source list is passed through `deduplicateSources()` (`lib/agent/sourceDedup.ts`) for cross-provider deduplication. This catches cases where Finnhub proxies an article URL through `finnhub.io/api/news?id=...` while Tavily returns the original publisher URL for the same article. Titles are normalized (lowercased, punctuation stripped, split into words). If two sources share ≥60% significant words (4+ characters), they are considered duplicates. When duplicates are found, the source with the real publisher URL is kept over the Finnhub proxy URL.
 
 **Output:** `EnrichedTickerGroup` containing the original events, quote, profile, metrics, sources, and Tavily context.
 
@@ -959,6 +992,7 @@ Builds a deduped array of `Source` objects (title + URL) from:
   - Market data (quote, metrics — all pre-formatted as plain English)
   - Numbered source list
   - Additional Tavily context
+  - **Existing ideas section**: Recent active/saved ideas for the same ticker (last 48 hours) are listed with their headlines and directions. The prompt instructs the LLM not to repeat these and to return `has_idea: false` if no new signal exists beyond what was already covered.
 
 **Thesis Formatting (`formatThesis()`):**
 This is the **single chokepoint** for all LLM prompts. It formats the `WizardData` into a structured text block:
@@ -1072,6 +1106,7 @@ All prompts flow through `lib/agent/prompts.ts`. The key exports:
 | `DAILY_DIGEST_SYSTEM_PROMPT` | Constant | `digestGenerator.ts` |
 | `formatThesis(thesis)` | Function | All prompt builders |
 | `buildTradeIdeaPrompt(group, thesis)` | Function | `ideaGenerator.ts` |
+| `buildTickerGroupUserPrompt(group, thesis, existingIdeas?)` | Function | `ideaGenerator.ts` |
 | `buildEarningsPrompt(data, thesis)` | Function | `earningsDigester.ts` |
 | `buildDigestPrompt(news, thesis, tickers)` | Function | `digestGenerator.ts` |
 
@@ -1096,6 +1131,7 @@ All prompts flow through `lib/agent/prompts.ts`. The key exports:
 - `lib/agent/ideaGenerator.ts` — Trade idea generation
 - `lib/agent/earningsDigester.ts` — Earnings digest generation
 - `lib/agent/digestGenerator.ts` — Daily digest generation
+- `lib/agent/thesisSearcher.ts` — Thesis query extraction (lightweight call, max_tokens: 200)
 
 **Error Handling:** Try/catch with error logging. Pipeline errors are captured in `agent_runs.error_message`.
 
@@ -1157,7 +1193,10 @@ All prompts flow through `lib/agent/prompts.ts`. The key exports:
 - Cache key: `tavily:search:<md5(query+options)>` (or similar hash)
 - TTL: 1 hour (`SEARCH_TTL`)
 
-**Usage:** Called during data enrichment (`dataEnricher.ts`) and earnings digest generation (`earningsDigester.ts`) to provide web context to the LLM.
+**Publisher Attribution (`lib/tavily/publisherMap.ts`):**
+Tavily results don't include a publisher name, so `publisherFromUrl(url)` extracts the real publisher from the URL domain. Maps common domains to display names (e.g., `finance.yahoo.com` → "Yahoo Finance", `reuters.com` → "Reuters", `cnbc.com` → "CNBC"). For unmapped domains, extracts and capitalizes the domain name. Sources from Tavily now show their real publisher name instead of "Tavily".
+
+**Usage:** Called during data enrichment (`dataEnricher.ts`) and earnings digest generation (`earningsDigester.ts`) to provide web context to the LLM. Also used during thesis-driven search (`thesisSearcher.ts` → `eventDetector.ts`).
 
 ### Supabase
 
@@ -1205,6 +1244,7 @@ All external API responses are cached in the `api_cache` Supabase table via serv
 | `ANALYST_DATA_TTL` | 21600 (6h) | Recommendations, price targets, upgrades, EPS |
 | `CANDLES_TTL` | 3600 (1h) | Stock candles (OHLCV) |
 | `PEERS_TTL` | 86400 (24h) | Peer company lists |
+| `THESIS_QUERIES_TTL` | 86400 (24h) | Thesis-derived search queries (key prefix `thesis-queries:`) |
 
 ---
 
@@ -1253,6 +1293,7 @@ All external API responses are cached in the `api_cache` Supabase table via serv
 2. **Auto-refresh**: Every 30 minutes via `setInterval`. Also refreshes when page becomes visible after being hidden >5 minutes (via `visibilitychange` event).
 3. **Generation status polling**: On mount, checks `/api/agent/status`. If `running`, polls every 5 seconds until `idle`, then refreshes feed.
 4. **Seeded toast**: If `watchlistSeeded` prop is true, shows a toast notification for 8 seconds explaining auto-populated tickers.
+5. **Rate limit toast**: When `POST /api/agent/run` returns 429, a temporary toast notification appears saying "Too many attempts. Please wait a few minutes." Auto-dismisses after 5 seconds. Uses the same toast pattern as the watchlist-seeded toast. Resets timeout on repeated 429s to prevent stacking.
 
 #### FeedCard (`components/feed/FeedCard.tsx`)
 
@@ -1455,6 +1496,37 @@ Calls `supabase.auth.signOut({ scope: 'global' })` then `fetch('/api/auth/sign-o
 
 Wraps Vercel `Analytics` component. Also logs page views to console in development.
 
+### Demo Walkthrough (`/demo`)
+
+**Route:** `app/demo/page.tsx` (public, no authentication required)
+
+An 11-step interactive guided tour that demonstrates the product using hardcoded static data — no API calls, no database interaction. All interactions update local state only.
+
+**Files:**
+- `app/demo/page.tsx` — Route entry point
+- `components/demo/DemoClient.tsx` — Main demo container
+- `components/demo/DemoController.tsx` — Step controller with navigation and tooltip overlays
+- `components/demo/DemoNav.tsx` — Demo-specific navigation bar
+- `components/demo/DemoDigestView.tsx` — Static digest display for demo
+- `components/demo/DemoWatchlistView.tsx` — Static watchlist display for demo
+- `components/demo/DemoThesisModal.tsx` — Thesis summary modal
+- `components/demo/DemoCtaCard.tsx` — Final call-to-action card
+- `lib/demo/data.ts` — Hardcoded demo data (user "Alex", 5 trade ideas, 1 digest, 5 watchlist items)
+- `lib/demo/steps.ts` — Step definitions and tooltip text
+- `lib/demo/types.ts` — Demo-specific TypeScript types
+
+**Steps:** Thesis summary → feed browsing → expanding a card → saving → thumbs up → thumbs down with feedback reasons → saved tab → digest tab → watchlist view → generating new ideas (with fake loading and new cards appearing) → final CTA to sign up.
+
+The landing page (`/`) includes a "See it in action" button linking to `/demo`.
+
+### Legal Pages
+
+**Terms of Service** (`app/terms/page.tsx`): Public route at `/terms`. Covers AI-generated content disclaimers, data collection and usage, third-party services (Finnhub, Tavily, Anthropic), user responsibilities, intellectual property, limitation of liability, and termination.
+
+**Privacy Policy** (`app/privacy/page.tsx`): Public route at `/privacy`. Covers data collection, usage, third-party sharing, cookies, user rights, data retention, and contact information.
+
+Both pages are linked from the login and signup forms. The auth page logo uses Noto Serif italic bold, matching the styling used in TopNav and the landing page.
+
 #### parseCitations (`lib/parseCitations.tsx`)
 
 **Function:** `parseCitations(text: string, sources: Source[]): React.ReactNode`
@@ -1483,9 +1555,11 @@ Converts `[N]` markers in text to clickable superscript `<a>` tags. Maps N to `s
 
 4. **Finnhub free tier constraints**: 60 calls/minute is adequate for single-user but becomes a bottleneck during cron runs with multiple users. The 10-second stagger in `generate-ideas` cron helps, but with many watchlist tickers per user, a single pipeline run can consume significant quota.
 
+4a. **Finnhub `/stock/candle` returns 403**: The candle endpoint consistently returns 403 errors, which appears to be a free tier limitation. This means price history data (30-day OHLCV) is unavailable, causing `TickerMetrics` to be null — no week/month change percentages, no relative volume, no distance-from-highs/lows. Idea generation proceeds without these metrics but produces weaker reasoning since the LLM lacks price trend context. The enricher silently skips 403 errors to avoid log noise.
+
 5. **Digest generation rate limit is in-memory**: The `POST /api/digest/generate` route uses a `Map<userId, timestamp>` for cooldown. This resets on server restart/redeploy and doesn't work across multiple serverless function instances. The trade idea pipeline correctly uses persistent database state for rate limiting.
 
-6. **No user-facing rate limit feedback for agent/run**: When a 429 is returned from `/api/agent/run`, the client sets `generating = true` and relies on polling to detect completion. The user sees "Generating..." but has no indication of how long to wait or that they hit a rate limit vs. a normal in-progress run.
+6. **Limited rate limit feedback for agent/run**: When a 429 is returned from `/api/agent/run`, the client now shows a toast notification ("Too many attempts. Please wait a few minutes.") that auto-dismisses after 5 seconds. However, the toast doesn't indicate the exact wait time from the `Retry-After` header, and the user still sees "Generating..." if the pipeline was already in progress (vs. rate-limited).
 
 ### Scalability
 
