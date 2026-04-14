@@ -38,7 +38,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center">
           <div>
-            <h1 className="text-3xl font-serif italic tracking-tight text-tickr-text inline">tickr</h1>
+            <h1 className="text-[22px] font-serif italic font-bold text-tickr-text inline" style={{ letterSpacing: '-0.02em' }}>tickr</h1>
             <span className="font-serif italic text-[9px] text-tickr-muted" style={{ fontWeight: 400, marginLeft: "2px", position: "relative", top: "5px" }}>
               by sky
             </span>
