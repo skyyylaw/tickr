@@ -13,7 +13,7 @@ export async function updateSession(request: NextRequest) {
   // ── Landing page: pass through immediately, no Supabase interaction ──
   // This guarantees no session cookies are created/refreshed for visitors
   // who haven't logged in (including incognito windows).
-  if (pathname === "/" || pathname === "/demo") {
+  if (pathname === "/" || pathname === "/demo" || pathname === "/terms" || pathname === "/privacy") {
     return NextResponse.next({ request });
   }
 

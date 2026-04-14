@@ -101,6 +101,16 @@ export default function LoginPage() {
             Sign up
           </Link>
         </p>
+
+        <p className="text-center text-[11px] text-tickr-muted leading-relaxed">
+          <Link href="/terms" className="underline hover:text-tickr-secondary transition-colors">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="underline hover:text-tickr-secondary transition-colors">
+            Privacy Policy
+          </Link>
+        </p>
       </div>
     </div>
   );
