@@ -9,6 +9,7 @@ import {
   getEpsEstimates,
 } from '@/lib/finnhub/client'
 import { search as tavilySearch } from '@/lib/tavily/client'
+import { publisherFromUrl } from '@/lib/tavily/publisherMap'
 import { EARNINGS_DIGEST_SYSTEM_PROMPT, buildEarningsDigestUserPrompt } from './prompts'
 import type { WizardData } from '@/types/Thesis'
 import type { EnrichedEarningsData, EarningsDigestLLMResponse, EarningsDigestResult, Source } from '@/types/Agent'
@@ -94,7 +95,7 @@ export async function generateEarningsDigest(
         id: nextId++,
         title: result.title,
         url: result.url,
-        publisher: 'Tavily',
+        publisher: publisherFromUrl(result.url),
       })
       seenUrls.add(result.url)
     }

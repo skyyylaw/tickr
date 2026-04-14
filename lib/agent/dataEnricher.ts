@@ -1,5 +1,6 @@
 import { getQuote, getCompanyProfile, getCandles } from '@/lib/finnhub/client'
 import { search as tavilySearch } from '@/lib/tavily/client'
+import { publisherFromUrl } from '@/lib/tavily/publisherMap'
 import type { Candles, Quote, CompanyProfile } from '@/types/Finnhub'
 import type { WizardData } from '@/types/Thesis'
 import type { DetectedEvent, EnrichedEvent, EnrichedTickerGroup, TickerEventGroup, TickerMetrics, Source } from '@/types/Agent'
@@ -75,7 +76,7 @@ function buildSources(
         id: nextId++,
         title: result.title,
         url: result.url,
-        publisher: 'Tavily',
+        publisher: publisherFromUrl(result.url),
       })
       seenUrls.add(result.url)
     }
@@ -184,7 +185,7 @@ function buildGroupSources(
         id: nextId++,
         title: result.title,
         url: result.url,
-        publisher: 'Tavily',
+        publisher: publisherFromUrl(result.url),
       })
       seenUrls.add(result.url)
     }
